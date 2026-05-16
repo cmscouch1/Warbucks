@@ -9,7 +9,7 @@ the relevant ChatGPT messages.
 ## Install
 
 ```bash
-python -m pip install -e .
+python3 -m pip install -e .
 ```
 
 The package only uses the Python standard library.
