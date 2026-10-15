@@ -3,8 +3,8 @@ import { Link } from "react-router-dom"
 import { PersonAvatar } from "@/components/person-avatar"
 import { Poster } from "@/components/poster"
 import { ShowCard } from "@/components/show-card"
+import { ButtonLink } from "@/components/button-link"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import {
   billedCredits,
@@ -69,9 +69,9 @@ export function HomePage() {
             </div>
           </div>
           <div>
-            <Button render={<Link to={`/shows/${featured.id}`} />}>
+            <ButtonLink to={`/shows/${featured.id}`}>
               Open show and full cast
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </section>

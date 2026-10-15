@@ -1,6 +1,4 @@
-import { Link } from "react-router-dom"
-
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/button-link"
 import {
   Empty,
   EmptyDescription,
@@ -15,7 +13,7 @@ export function NotFoundPage() {
         <EmptyTitle>Page not found</EmptyTitle>
         <EmptyDescription>That route is not in this guide.</EmptyDescription>
       </EmptyHeader>
-      <Button render={<Link to="/" />}>Go home</Button>
+      <ButtonLink to="/">Go home</ButtonLink>
     </Empty>
   )
 }

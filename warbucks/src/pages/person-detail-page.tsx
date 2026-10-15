@@ -1,9 +1,9 @@
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
 import { PersonAvatar } from "@/components/person-avatar"
 import { ShowCard } from "@/components/show-card"
+import { ButtonLink } from "@/components/button-link"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Empty,
   EmptyDescription,
@@ -23,7 +23,7 @@ export function PersonDetailPage() {
           <EmptyTitle>Person not in the catalog</EmptyTitle>
           <EmptyDescription>Browse the full cast list instead.</EmptyDescription>
         </EmptyHeader>
-        <Button render={<Link to="/people" />}>Back to cast</Button>
+        <ButtonLink to="/people">Back to cast</ButtonLink>
       </Empty>
     )
   }

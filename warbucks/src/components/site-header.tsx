@@ -70,6 +70,7 @@ export function SiteHeader() {
         </form>
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
+            nativeButton={true}
             render={
               <Button
                 variant="outline"

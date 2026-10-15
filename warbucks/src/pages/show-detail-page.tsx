@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom"
 
 import { PersonAvatar } from "@/components/person-avatar"
 import { Poster } from "@/components/poster"
+import { ButtonLink } from "@/components/button-link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +36,7 @@ export function ShowDetailPage() {
           <EmptyTitle>Show not in the catalog</EmptyTitle>
           <EmptyDescription>Pick another title from the show list.</EmptyDescription>
         </EmptyHeader>
-        <Button render={<Link to="/shows" />}>Back to shows</Button>
+        <ButtonLink to="/shows">Back to shows</ButtonLink>
       </Empty>
     )
   }
@@ -116,14 +117,14 @@ export function ShowDetailPage() {
                 {supporting.map((credit) => {
                   const person = requirePerson(credit.personId)
                   return (
-                    <Button
+                    <ButtonLink
                       key={credit.personId}
                       size="sm"
                       variant="outline"
-                      render={<Link to={`/people/${person.id}`} />}
+                      to={`/people/${person.id}`}
                     >
                       {person.name}
-                    </Button>
+                    </ButtonLink>
                   )
                 })}
               </div>
