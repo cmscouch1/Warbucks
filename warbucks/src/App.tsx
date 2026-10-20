@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useParams } from "react-router-dom"
 import { AppShell } from "@/components/app-shell"
 import { HomePage } from "@/pages/home-page"
 import { NotFoundPage } from "@/pages/not-found-page"
+import { SeriesPage } from "@/pages/series-page"
 import { WatchPage } from "@/pages/watch-page"
 
 function LegacyShowRedirect() {
@@ -18,6 +19,7 @@ export function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/series/:showId" element={<SeriesPage />} />
         <Route path="/watch/:showId" element={<WatchPage />} />
         <Route path="/shows/:showId" element={<LegacyShowRedirect />} />
         <Route path="/shows" element={<Navigate to="/" replace />} />

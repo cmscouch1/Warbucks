@@ -11,7 +11,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty"
-import { billedCredits, findEpisode, formatAired, formatEpisodeCode, getShow, latestEpisode, neighborEpisode, orderedEpisodes, playbackUrl, requirePerson } from "@/lib/queries"
+import { billedCredits, episodeLine, findEpisode, formatEpisodeCode, formatPosted, getShow, latestEpisode, neighborEpisode, orderedEpisodes, playbackUrl, requirePerson } from "@/lib/queries"
 import { writeContinue } from "@/lib/progress"
 
 function parseCount(value: string | null): number | null {
@@ -107,11 +107,10 @@ export function WatchPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/series/${show.id}`)}>
           <ChevronLeftIcon data-icon="inline-start" />
-          Shows
+          {show.title}
         </Button>
-        <h1 className="font-heading truncate text-xl md:text-2xl">{show.title}</h1>
       </div>
 
       <EpisodePlayer
@@ -127,10 +126,10 @@ export function WatchPage() {
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
-          <p className="text-sm text-muted-foreground">
-            {formatEpisodeCode(selected.season, selected.number)} · {formatAired(selected.aired)}
-          </p>
-          <h2 className="font-heading text-2xl">{selected.title}</h2>
+          <h2 className="font-heading text-2xl">
+            {episodeLine(show.title, selected.season, selected.number, selected.title)}
+          </h2>
+          <p className="text-sm text-muted-foreground">{formatPosted(selected.aired)}</p>
           {castLine ? (
             <p className="text-sm text-muted-foreground">{castLine}</p>
           ) : null}
@@ -200,12 +199,8 @@ export function WatchPage() {
                 }
                 onClick={() => openEpisode(episode.season, episode.number)}
               >
-                <span className="w-16 shrink-0 text-sm text-muted-foreground">
-                  {formatEpisodeCode(episode.season, episode.number)}
-                </span>
-                <span className="min-w-0 flex-1 font-medium">{episode.title}</span>
-                <span className="hidden shrink-0 text-sm text-muted-foreground sm:inline">
-                  {formatAired(episode.aired)}
+                <span className="min-w-0 flex-1 font-medium">
+                  {episodeLine(show.title, episode.season, episode.number, episode.title)}
                 </span>
               </button>
             )

@@ -25,6 +25,7 @@ export const NETWORKS = [
   "VH1",
   "NowThatsTV",
   "TREND",
+  "Broken Silenze",
 ] as const
 
 export type Network = (typeof NETWORKS)[number]

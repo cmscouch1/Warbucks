@@ -1,4 +1,5 @@
 import { PEOPLE } from "@/data/people"
+import { SITE_POSTS, SITE_SERIES } from "@/data/site"
 import { SHOWS } from "@/data/shows"
 import type {
   CatalogEpisode,
@@ -31,8 +32,110 @@ export function getPeople(): Person[] {
   return PEOPLE
 }
 
+function siteTitle(showId: string, fallback: string): string {
+  const post = SITE_POSTS.find((item) => item.showId === showId)
+  if (post) {
+    return post.showTitle
+  }
+  const listed = SITE_SERIES.find((item) => item.id === showId)
+  return listed?.title ?? fallback
+}
+
+function withSitePosts(show: Show): Show {
+  const posts = SITE_POSTS.filter((post) => post.showId === show.id)
+  const episodes = show.episodes.map((episode) => ({ ...episode }))
+  for (const post of posts) {
+    const index = episodes.findIndex(
+      (episode) => episode.season === post.season && episode.number === post.number
+    )
+    const next = {
+      season: post.season,
+      number: post.number,
+      title: post.title,
+      aired: post.aired,
+    }
+    if (index >= 0) {
+      episodes[index] = next
+    } else {
+      episodes.push(next)
+    }
+  }
+  return {
+    ...show,
+    title: siteTitle(show.id, show.title),
+    episodes,
+  }
+}
+
+function showFromSite(showId: string, title: string): Show {
+  return {
+    id: showId,
+    collection: "lifestyle",
+    title,
+    year: 2026,
+    network: "Broken Silenze",
+    genres: ["Reality"],
+    status: "returning",
+    logline: "",
+    currentSeason: 1,
+    posterHue: 28,
+    officialHome: "Broken Silenze",
+    credits: [],
+    episodes: [],
+  }
+}
+
+export function resolveShow(id: string): Show | undefined {
+  const existing = showsById.get(id)
+  if (existing) {
+    return withSitePosts(existing)
+  }
+  const listed = SITE_SERIES.find((item) => item.id === id)
+  const posted = SITE_POSTS.find((item) => item.showId === id)
+  if (!listed && !posted) {
+    return undefined
+  }
+  return withSitePosts(showFromSite(id, posted?.showTitle ?? listed?.title ?? id))
+}
+
 export function getShow(id: string): Show | undefined {
-  return showsById.get(id)
+  return resolveShow(id)
+}
+
+export function siteSeries(): Show[] {
+  return SITE_SERIES.flatMap((item) => {
+    const show = resolveShow(item.id)
+    return show ? [show] : []
+  })
+}
+
+export function siteFeed(): CatalogEpisode[] {
+  return SITE_POSTS.map((post) => {
+    const show = resolveShow(post.showId)
+    return {
+      season: post.season,
+      number: post.number,
+      title: post.title,
+      aired: post.aired,
+      showId: post.showId,
+      showTitle: post.showTitle,
+      network: show?.network ?? "Broken Silenze",
+      posterHue: show?.posterHue ?? 28,
+    }
+  }).sort((left, right) => right.aired.localeCompare(left.aired))
+}
+
+export function episodeLine(
+  showTitle: string,
+  season: number,
+  number: number,
+  title: string
+): string {
+  const base = `${showTitle} Season ${season} Episode ${number}`
+  if (title.trim().length === 0) {
+    return base
+  }
+  return `${base} – ‘${title}’`
 }
 
 export function getPerson(id: string): Person | undefined {
@@ -149,6 +252,16 @@ export function formatAired(isoDate: string): string {
     day: "numeric",
     year: "numeric",
   }).format(date)
+}
+
+export function formatPosted(isoDate: string): string {
+  const date = new Date(`${isoDate}T00:00:00`)
+  const formatted = new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date)
+  return `On ${formatted}`
 }
 
 function matchesQuery(haystack: string, query: string): boolean {
