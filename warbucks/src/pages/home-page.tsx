@@ -1,132 +1,148 @@
-import { useMemo, useState } from "react"
-import { Link, useSearchParams } from "react-router-dom"
+import { Link } from "react-router-dom"
 
+import { PersonAvatar } from "@/components/person-avatar"
 import { Poster } from "@/components/poster"
 import { ShowCard } from "@/components/show-card"
-import { Button } from "@/components/ui/button"
+import { ButtonLink } from "@/components/button-link"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty"
-import { Input } from "@/components/ui/input"
-import {
-  collectionLabel,
-  filterShows,
-  findEpisode,
+  billedCredits,
+  featuredShow,
+  formatAired,
   formatEpisodeCode,
-  getShow,
-  usedCollections,
+  latestEpisodes,
+  requirePerson,
+  showsByGenre,
 } from "@/lib/queries"
-import { readContinue, type ContinueWatching } from "@/lib/progress"
-import { COLLECTIONS, type Collection } from "@/lib/types"
 
-function isCollection(value: string | null): value is Collection {
-  return COLLECTIONS.some((collection) => collection === value)
-}
+const HOME_GENRES = ["Drama", "Reality", "Dating", "Competition"] as const
 
 export function HomePage() {
-  const [params, setParams] = useSearchParams()
-  const query = params.get("q") ?? ""
-  const collectionParam = params.get("g")
-  const collection = isCollection(collectionParam) ? collectionParam : "all"
-  const [continueWatching] = useState<ContinueWatching | null>(() => readContinue())
-
-  const shows = useMemo(
-    () => filterShows({ query, collection }),
-    [query, collection]
-  )
-
-  const continueShow = continueWatching ? getShow(continueWatching.showId) : undefined
-  const continueEpisode =
-    continueShow && continueWatching
-      ? findEpisode(continueShow, continueWatching.season, continueWatching.number)
-      : undefined
-
-  function setCollection(next: Collection | "all") {
-    const copy = new URLSearchParams(params)
-    if (next === "all") {
-      copy.delete("g")
-    } else {
-      copy.set("g", next)
-    }
-    setParams(copy)
-  }
+  const featured = featuredShow()
+  const cast = billedCredits(featured).slice(0, 8)
+  const latest = latestEpisodes(8)
 
   return (
-    <div className="flex flex-col gap-8">
-      {continueShow && continueEpisode && continueWatching ? (
-        <Link
-          to={`/watch/${continueShow.id}?s=${continueWatching.season}&e=${continueWatching.number}`}
-          className="flex items-center gap-4 rounded-xl border p-3 hover:bg-muted/60"
-          data-testid="continue-watching"
-        >
-          <Poster show={continueShow} size="thumb" />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="text-xs tracking-[0.16em] text-muted-foreground uppercase">
-              Continue
-            </p>
-            <p className="truncate font-heading text-lg">{continueShow.title}</p>
-            <p className="truncate text-sm text-muted-foreground">
-              {formatEpisodeCode(continueEpisode.season, continueEpisode.number)} · {continueEpisode.title}
-            </p>
+    <div className="flex flex-col gap-12">
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-stretch">
+        <Poster show={featured} size="hero" />
+        <div className="flex flex-col justify-end gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge>Featured</Badge>
+            <Badge variant="outline">{featured.network}</Badge>
+            {featured.genres.map((genre) => (
+              <Badge key={genre} variant="secondary">
+                {genre}
+              </Badge>
+            ))}
           </div>
-        </Link>
-      ) : null}
+          <div className="flex flex-col gap-2">
+            <h1 className="font-heading text-3xl leading-tight md:text-4xl">
+              {featured.title}
+            </h1>
+            <p className="max-w-prose text-muted-foreground">{featured.logline}</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <p className="text-xs tracking-[0.18em] text-muted-foreground uppercase">
+              Billed cast
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {cast.map((credit) => {
+                const person = requirePerson(credit.personId)
+                return (
+                  <Link
+                    key={credit.personId}
+                    to={`/people/${person.id}`}
+                    className="flex items-center gap-2 rounded-lg pr-2 hover:bg-muted"
+                  >
+                    <PersonAvatar person={person} size="sm" />
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm">{person.name}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {credit.role}
+                      </span>
+                    </span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+          <div>
+            <ButtonLink to={`/shows/${featured.id}`}>
+              Open show and full cast
+            </ButtonLink>
+          </div>
+        </div>
+      </section>
 
-      <div className="flex flex-col gap-4">
-        <Input
-          value={query}
-          onChange={(event) => {
-            const copy = new URLSearchParams(params)
-            const next = event.target.value
-            if (next.trim().length === 0) {
-              copy.delete("q")
-            } else {
-              copy.set("q", next)
-            }
-            setParams(copy)
-          }}
-          placeholder="Find a show"
-          aria-label="Find a show"
-          data-testid="home-search"
-        />
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant={collection === "all" ? "default" : "outline"}
-            onClick={() => setCollection("all")}
-          >
-            All
-          </Button>
-          {usedCollections().map((item) => (
-            <Button
-              key={item}
-              size="sm"
-              variant={collection === item ? "default" : "outline"}
-              onClick={() => setCollection(item)}
-            >
-              {collectionLabel(item)}
-            </Button>
+      <section className="flex flex-col gap-4">
+        <div className="flex items-end justify-between gap-4">
+          <h2 className="font-heading text-2xl">Latest episodes</h2>
+          <Link to="/latest" className="text-sm text-muted-foreground hover:text-foreground">
+            Full list
+          </Link>
+        </div>
+        <div className="flex flex-col">
+          {latest.map((episode, index) => (
+            <div key={`${episode.showId}-${episode.season}-${episode.number}`}>
+              {index > 0 ? <Separator /> : null}
+              <Link
+                to={`/shows/${episode.showId}`}
+                className="flex items-center gap-4 py-3 hover:bg-muted/60"
+              >
+                <Poster
+                  show={{
+                    title: episode.showTitle,
+                    network: episode.network,
+                    posterHue: episode.posterHue,
+                    year: 0,
+                  }}
+                  size="thumb"
+                  episode={{ season: episode.season, number: episode.number }}
+                />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <p className="truncate font-medium">{episode.showTitle}</p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {episode.title}
+                  </p>
+                </div>
+                <div className="hidden shrink-0 flex-col items-end text-sm sm:flex">
+                  <span>{formatEpisodeCode(episode.season, episode.number)}</span>
+                  <span className="text-muted-foreground">
+                    {formatAired(episode.aired)}
+                  </span>
+                </div>
+              </Link>
+            </div>
           ))}
         </div>
-      </div>
+      </section>
 
-      {shows.length === 0 ? (
-        <Empty className="border">
-          <EmptyHeader>
-            <EmptyTitle>No shows match</EmptyTitle>
-            <EmptyDescription>Try another name or clear the filter.</EmptyDescription>
-          </EmptyHeader>
-        </Empty>
-      ) : (
-        <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-5">
-          {shows.map((show) => (
-            <ShowCard key={show.id} show={show} />
-          ))}
-        </div>
-      )}
+      {HOME_GENRES.map((genre) => {
+        const shows = showsByGenre(genre).slice(0, 6)
+        if (shows.length === 0) {
+          return null
+        }
+        return (
+          <section key={genre} className="flex flex-col gap-4">
+            <div className="flex items-end justify-between gap-4">
+              <h2 className="font-heading text-2xl">{genre}</h2>
+              <Link
+                to={`/shows?genre=${encodeURIComponent(genre)}`}
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                All {genre.toLowerCase()}
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-6">
+              {shows.map((show) => (
+                <ShowCard key={show.id} show={show} />
+              ))}
+            </div>
+          </section>
+        )
+      })}
     </div>
   )
 }

@@ -24,7 +24,6 @@ export const NETWORKS = [
   "MTV",
   "VH1",
   "NowThatsTV",
-  "TREND",
 ] as const
 
 export type Network = (typeof NETWORKS)[number]
@@ -32,20 +31,6 @@ export type Network = (typeof NETWORKS)[number]
 export const SHOW_STATUSES = ["returning", "new", "limited"] as const
 
 export type ShowStatus = (typeof SHOW_STATUSES)[number]
-
-export const COLLECTIONS = [
-  "housewives",
-  "zeus",
-  "ninety-day",
-  "hip-hop",
-  "drama",
-  "dating",
-  "competition",
-  "comedy",
-  "lifestyle",
-] as const
-
-export type Collection = (typeof COLLECTIONS)[number]
 
 export type Person = {
   id: string
@@ -67,7 +52,6 @@ export type Episode = {
 
 export type Show = {
   id: string
-  collection: Collection
   title: string
   year: number
   network: Network
