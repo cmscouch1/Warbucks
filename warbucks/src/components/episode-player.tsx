@@ -19,7 +19,7 @@ export function EpisodePlayer({ src, title, onEnded }: EpisodePlayerProps) {
       return
     }
     setStarted(true)
-    void video.play()
+    void video.play().catch(() => undefined)
   }
 
   return (

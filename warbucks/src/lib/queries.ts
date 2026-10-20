@@ -134,20 +134,8 @@ export function neighborEpisode(
   return ordered[index + direction]
 }
 
-const SAMPLE_VIDEOS = [
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-] as const
-
-export function playbackUrl(showId: string): string {
-  let hash = 0
-  for (const character of showId) {
-    hash = (hash + character.charCodeAt(0)) % SAMPLE_VIDEOS.length
-  }
-  return SAMPLE_VIDEOS[hash] ?? SAMPLE_VIDEOS[0]
+export function playbackUrl(): string {
+  return "/sample.mp4"
 }
 
 export function formatEpisodeCode(season: number, number: number): string {

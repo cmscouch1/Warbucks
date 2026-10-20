@@ -116,7 +116,7 @@ export function WatchPage() {
 
       <EpisodePlayer
         key={`${show.id}-${selected.season}-${selected.number}`}
-        src={playbackUrl(show.id)}
+        src={playbackUrl()}
         title={`${show.title} ${formatEpisodeCode(selected.season, selected.number)}`}
         onEnded={() => {
           if (next) {
