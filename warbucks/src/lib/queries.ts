@@ -2,12 +2,15 @@ import { PEOPLE } from "@/data/people"
 import { SHOWS } from "@/data/shows"
 import type {
   CatalogEpisode,
+  Collection,
+  Episode,
   Genre,
   Network,
   Person,
   Show,
   ShowStatus,
 } from "@/lib/types"
+import { COLLECTIONS } from "@/lib/types"
 
 const peopleById = new Map(PEOPLE.map((person) => [person.id, person]))
 const showsById = new Map(SHOWS.map((show) => [show.id, show]))
@@ -63,6 +66,90 @@ export function statusLabel(status: ShowStatus): string {
   }
 }
 
+export function collectionLabel(collection: Collection): string {
+  switch (collection) {
+    case "housewives":
+      return "Housewives"
+    case "zeus":
+      return "Zeus / Baddies"
+    case "ninety-day":
+      return "90 Day"
+    case "hip-hop":
+      return "Hip-Hop"
+    case "drama":
+      return "Drama"
+    case "dating":
+      return "Dating"
+    case "competition":
+      return "Competition"
+    case "comedy":
+      return "Comedy"
+    case "lifestyle":
+      return "Lifestyle"
+    default: {
+      const exhaustive: never = collection
+      return exhaustive
+    }
+  }
+}
+
+export function latestEpisode(show: Show): Episode | undefined {
+  return [...show.episodes].sort((left, right) =>
+    right.aired.localeCompare(left.aired)
+  )[0]
+}
+
+export function orderedEpisodes(show: Show): Episode[] {
+  return [...show.episodes].sort((left, right) => {
+    if (left.season !== right.season) {
+      return left.season - right.season
+    }
+    return left.number - right.number
+  })
+}
+
+export function findEpisode(
+  show: Show,
+  season: number,
+  number: number
+): Episode | undefined {
+  return show.episodes.find(
+    (episode) => episode.season === season && episode.number === number
+  )
+}
+
+export function neighborEpisode(
+  show: Show,
+  season: number,
+  number: number,
+  direction: 1 | -1
+): Episode | undefined {
+  const ordered = orderedEpisodes(show)
+  const index = ordered.findIndex(
+    (episode) => episode.season === season && episode.number === number
+  )
+  if (index < 0) {
+    return undefined
+  }
+  return ordered[index + direction]
+}
+
+const SAMPLE_VIDEOS = [
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+] as const
+
+export function playbackUrl(showId: string): string {
+  let hash = 0
+  for (const character of showId) {
+    hash = (hash + character.charCodeAt(0)) % SAMPLE_VIDEOS.length
+  }
+  return SAMPLE_VIDEOS[hash] ?? SAMPLE_VIDEOS[0]
+}
+
 export function formatEpisodeCode(season: number, number: number): string {
   return `S${String(season).padStart(2, "0")}E${String(number).padStart(2, "0")}`
 }
@@ -84,12 +171,17 @@ export function filterShows(options: {
   query?: string
   genre?: Genre | "all"
   network?: Network | "all"
+  collection?: Collection | "all"
 }): Show[] {
   const query = options.query?.trim() ?? ""
   const genre = options.genre ?? "all"
   const network = options.network ?? "all"
+  const collection = options.collection ?? "all"
 
   return SHOWS.filter((show) => {
+    if (collection !== "all" && show.collection !== collection) {
+      return false
+    }
     if (genre !== "all" && !show.genres.includes(genre)) {
       return false
     }
@@ -126,6 +218,43 @@ export function latestEpisodes(limit = 12): CatalogEpisode[] {
 
 export function showsByGenre(genre: Genre): Show[] {
   return SHOWS.filter((show) => show.genres.includes(genre))
+}
+
+export function showsByCollection(collection: Collection): Show[] {
+  return SHOWS.filter((show) => show.collection === collection)
+}
+
+export function usedCollections(): Collection[] {
+  const present = new Set(SHOWS.map((show) => show.collection))
+  return COLLECTIONS.filter((collection) => present.has(collection))
+}
+
+export function peopleInLatestEpisodes(limit = 12) {
+  const seen = new Set<string>()
+  const result: { person: Person; show: Show; role: string }[] = []
+
+  for (const episode of latestEpisodes(20)) {
+    const show = getShow(episode.showId)
+    if (!show) {
+      continue
+    }
+    for (const credit of billedCredits(show)) {
+      if (seen.has(credit.personId)) {
+        continue
+      }
+      seen.add(credit.personId)
+      result.push({
+        person: requirePerson(credit.personId),
+        show,
+        role: credit.role,
+      })
+      if (result.length >= limit) {
+        return result
+      }
+    }
+  }
+
+  return result
 }
 
 export function featuredShow(): Show {

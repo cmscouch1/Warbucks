@@ -3,6 +3,7 @@ import type { Show } from "@/lib/types"
 export const SHOWS: Show[] = [
   {
     id: "the-drop",
+    collection: "drama",
     title: "The Drop: A Snowfall Saga",
     year: 2026,
     network: "FX",
@@ -40,6 +41,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "reasonable-doubt",
+    collection: "drama",
     title: "Reasonable Doubt",
     year: 2022,
     network: "Hulu",
@@ -70,6 +72,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "rhony",
+    collection: "housewives",
     title: "The Real Housewives of New York City",
     year: 2008,
     network: "Bravo",
@@ -100,6 +103,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "rhoslc",
+    collection: "housewives",
     title: "The Real Housewives of Salt Lake City",
     year: 2020,
     network: "Bravo",
@@ -126,6 +130,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "rhop",
+    collection: "housewives",
     title: "The Real Housewives of Potomac",
     year: 2016,
     network: "Bravo",
@@ -150,6 +155,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "rhoc",
+    collection: "housewives",
     title: "The Real Housewives of Orange County",
     year: 2006,
     network: "Bravo",
@@ -174,6 +180,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "the-kardashians",
+    collection: "lifestyle",
     title: "The Kardashians",
     year: 2022,
     network: "Hulu",
@@ -198,6 +205,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "abbott-elementary",
+    collection: "comedy",
     title: "Abbott Elementary",
     year: 2021,
     network: "ABC",
@@ -222,6 +230,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "in-the-city",
+    collection: "lifestyle",
     title: "In the City",
     year: 2026,
     network: "Bravo",
@@ -247,6 +256,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "the-traitors-new-blood",
+    collection: "competition",
     title: "The Traitors: New Blood",
     year: 2023,
     network: "Peacock",
@@ -266,6 +276,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "drag-race-uk",
+    collection: "competition",
     title: "RuPaul's Drag Race UK",
     year: 2019,
     network: "BBC",
@@ -286,6 +297,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "baddies-usa",
+    collection: "zeus",
     title: "Baddies USA",
     year: 2023,
     network: "Zeus",
@@ -309,6 +321,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "married-to-medicine",
+    collection: "housewives",
     title: "Married to Medicine",
     year: 2013,
     network: "Bravo",
@@ -331,6 +344,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "love-and-hip-hop-atlanta",
+    collection: "hip-hop",
     title: "Love & Hip Hop Atlanta",
     year: 2012,
     network: "VH1",
@@ -353,6 +367,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "ready-to-love",
+    collection: "dating",
     title: "Ready to Love",
     year: 2018,
     network: "OWN",
@@ -374,6 +389,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "the-challenge",
+    collection: "competition",
     title: "The Challenge",
     year: 1998,
     network: "MTV",
@@ -395,6 +411,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "the-oval",
+    collection: "drama",
     title: "The Oval",
     year: 2019,
     network: "BET+",
@@ -414,6 +431,7 @@ export const SHOWS: Show[] = [
   },
   {
     id: "90-day-other-way",
+    collection: "ninety-day",
     title: "90 Day Fiancé: The Other Way",
     year: 2019,
     network: "TLC",
@@ -427,6 +445,139 @@ export const SHOWS: Show[] = [
     credits: [],
     episodes: [
       { season: 7, number: 1, title: "Season Premiere", aired: "2026-08-03" },
+    ],
+  },
+  {
+    id: "rhol",
+    collection: "housewives",
+    title: "The Real Housewives of London",
+    year: 2025,
+    network: "Bravo",
+    genres: ["Reality"],
+    status: "returning",
+    logline:
+      "Six London women keep score from Chelsea to Paddington, with charity galas, fashion week, and no simple toast.",
+    currentSeason: 2,
+    posterHue: 250,
+    officialHome: "Bravo / Peacock / Hayu",
+    credits: [
+      { personId: "juliet-angus", role: "Herself", billed: true },
+      { personId: "amanda-cronin", role: "Herself", billed: true },
+      { personId: "karen-loderick-peace", role: "Herself", billed: true },
+      { personId: "juliet-mayhew", role: "Herself", billed: true },
+      { personId: "panthea-parker", role: "Herself", billed: true },
+      { personId: "nessie-welschinger", role: "Herself", billed: true },
+    ],
+    episodes: [
+      { season: 2, number: 1, title: "Season 2 Premiere", aired: "2026-09-07" },
+    ],
+  },
+  {
+    id: "coming-up-miami",
+    collection: "hip-hop",
+    title: "Coming Up Miami",
+    year: 2024,
+    network: "TREND",
+    genres: ["Reality", "Hip-Hop"],
+    status: "returning",
+    logline:
+      "Miami influencers, artists, and socialites mix nightlife, business, and friendship while the cameras stay on.",
+    currentSeason: 2,
+    posterHue: 185,
+    officialHome: "TREND Network",
+    credits: [
+      { personId: "alexis-skyy", role: "Herself", billed: true },
+      { personId: "khaotic", role: "Himself", billed: true },
+      { personId: "double-dose-twins", role: "Themselves", billed: true },
+      { personId: "diamond-the-body", role: "Herself", billed: true },
+      { personId: "nicole-zavala", role: "Herself", billed: true },
+      { personId: "billionaire-barbie", role: "Herself", billed: true },
+      { personId: "charisse-mills", role: "Herself", billed: true },
+      { personId: "eliza-reign", role: "Herself", billed: true },
+    ],
+    episodes: [
+      { season: 2, number: 1, title: "Episode 1", aired: "2026-07-02" },
+      { season: 2, number: 8, title: "Episode 8", aired: "2026-08-20" },
+    ],
+  },
+  {
+    id: "90-day-hunt-for-love",
+    collection: "ninety-day",
+    title: "90 Day: Hunt for Love",
+    year: 2025,
+    network: "TLC",
+    genres: ["Dating", "Reality"],
+    status: "new",
+    logline:
+      "Singles hunt for a match on familiar 90 Day ground, with the usual recaps, reveals, and tell-all.",
+    currentSeason: 1,
+    posterHue: 78,
+    officialHome: "TLC / Max",
+    credits: [],
+    episodes: [
+      { season: 1, number: 1, title: "Season Premiere", aired: "2026-06-02" },
+    ],
+  },
+  {
+    id: "love-after-lockup",
+    collection: "dating",
+    title: "Love After Lockup: Relationship Rehab",
+    year: 2018,
+    network: "TLC",
+    genres: ["Dating", "Reality"],
+    status: "returning",
+    logline:
+      "Couples who started behind bars try to keep the relationship together once the sentence is over.",
+    currentSeason: 6,
+    posterHue: 35,
+    officialHome: "TLC / Max",
+    credits: [],
+    episodes: [
+      { season: 6, number: 1, title: "Season Premiere", aired: "2026-05-11" },
+    ],
+  },
+  {
+    id: "baddies-retreat",
+    collection: "zeus",
+    title: "Baddies Retreat",
+    year: 2024,
+    network: "Zeus",
+    genres: ["Reality", "Hip-Hop"],
+    status: "returning",
+    logline:
+      "The Baddies leave the tour bus for a retreat, with the same fights and a change of scenery.",
+    currentSeason: 2,
+    posterHue: 8,
+    officialHome: "Zeus",
+    credits: [
+      { personId: "natalie-nunn", role: "Herself", billed: true },
+      { personId: "scotty-ryan", role: "Herself", billed: true },
+      { personId: "rollie-pollie", role: "Herself", billed: true },
+      { personId: "ahna-mac", role: "Herself", billed: true },
+    ],
+    episodes: [
+      { season: 2, number: 1, title: "Season Premiere", aired: "2026-09-28" },
+    ],
+  },
+  {
+    id: "love-marriage-huntsville",
+    collection: "dating",
+    title: "Love & Marriage Huntsville",
+    year: 2019,
+    network: "OWN",
+    genres: ["Reality", "Dating"],
+    status: "returning",
+    logline:
+      "Huntsville couples keep the businesses, the marriages, and the group trip in front of the cameras.",
+    currentSeason: 7,
+    posterHue: 140,
+    officialHome: "OWN / Max",
+    credits: [
+      { personId: "martell-holt", role: "Himself", billed: true },
+      { personId: "melody-holt", role: "Herself", billed: true },
+    ],
+    episodes: [
+      { season: 7, number: 1, title: "Season Premiere", aired: "2026-04-20" },
     ],
   },
 ]

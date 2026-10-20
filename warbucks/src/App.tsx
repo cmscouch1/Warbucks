@@ -1,25 +1,30 @@
-import { Navigate, Route, Routes } from "react-router-dom"
+import { Navigate, Route, Routes, useParams } from "react-router-dom"
 
 import { AppShell } from "@/components/app-shell"
 import { HomePage } from "@/pages/home-page"
-import { LatestPage } from "@/pages/latest-page"
 import { NotFoundPage } from "@/pages/not-found-page"
-import { PeoplePage } from "@/pages/people-page"
-import { PersonDetailPage } from "@/pages/person-detail-page"
-import { ShowDetailPage } from "@/pages/show-detail-page"
-import { ShowsPage } from "@/pages/shows-page"
+import { WatchPage } from "@/pages/watch-page"
+
+function LegacyShowRedirect() {
+  const { showId } = useParams()
+  if (!showId) {
+    return <Navigate to="/" replace />
+  }
+  return <Navigate to={`/watch/${showId}`} replace />
+}
 
 export function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/shows" element={<ShowsPage />} />
-        <Route path="/shows/:showId" element={<ShowDetailPage />} />
-        <Route path="/people" element={<PeoplePage />} />
-        <Route path="/people/:personId" element={<PersonDetailPage />} />
-        <Route path="/latest" element={<LatestPage />} />
-        <Route path="/cast" element={<Navigate to="/people" replace />} />
+        <Route path="/watch/:showId" element={<WatchPage />} />
+        <Route path="/shows/:showId" element={<LegacyShowRedirect />} />
+        <Route path="/shows" element={<Navigate to="/" replace />} />
+        <Route path="/people" element={<Navigate to="/" replace />} />
+        <Route path="/people/:personId" element={<Navigate to="/" replace />} />
+        <Route path="/latest" element={<Navigate to="/" replace />} />
+        <Route path="/cast" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
