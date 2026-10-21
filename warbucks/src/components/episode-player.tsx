@@ -1,4 +1,3 @@
-import { PlayIcon } from "lucide-react"
 import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -30,7 +29,7 @@ export function EpisodePlayer({ src, title, onEnded }: EpisodePlayerProps) {
         src={src}
         controls={started}
         playsInline
-        preload="metadata"
+        preload="none"
         aria-label={title}
         data-testid="episode-player"
         onEnded={onEnded}
@@ -38,7 +37,6 @@ export function EpisodePlayer({ src, title, onEnded }: EpisodePlayerProps) {
       {started ? null : (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40">
           <Button size="lg" onClick={play} data-testid="play-episode">
-            <PlayIcon data-icon="inline-start" />
             Play
           </Button>
         </div>

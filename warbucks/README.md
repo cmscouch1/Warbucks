@@ -1,6 +1,6 @@
 # Broken Silenze
 
-A small watch client. Pick a show, pick an episode, press Play.
+A light web client for the Broken Silenze series list and episode posts.
 
 ```bash
 npm install

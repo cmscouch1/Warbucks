@@ -1,17 +1,20 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 import { useEffect, useMemo } from "react"
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { Link, useParams, useSearchParams } from "react-router-dom"
 
 import { ButtonLink } from "@/components/button-link"
 import { EpisodePlayer } from "@/components/episode-player"
 import { Button } from "@/components/ui/button"
 import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty"
-import { billedCredits, episodeLine, findEpisode, formatEpisodeCode, formatPosted, getShow, latestEpisode, neighborEpisode, orderedEpisodes, playbackUrl, requirePerson } from "@/lib/queries"
+  episodeLine,
+  findEpisode,
+  formatEpisodeCode,
+  formatPosted,
+  getShow,
+  latestEpisode,
+  neighborEpisode,
+  orderedEpisodes,
+  playbackUrl,
+} from "@/lib/queries"
 import { writeContinue } from "@/lib/progress"
 
 function parseCount(value: string | null): number | null {
@@ -28,8 +31,11 @@ function parseCount(value: string | null): number | null {
 export function WatchPage() {
   const { showId } = useParams()
   const [params, setParams] = useSearchParams()
-  const navigate = useNavigate()
   const show = showId ? getShow(showId) : undefined
+  const episodes = useMemo(
+    () => (show ? orderedEpisodes(show) : []),
+    [show]
+  )
 
   const selected = useMemo(() => {
     if (!show) {
@@ -43,20 +49,18 @@ export function WatchPage() {
     return latestEpisode(show)
   }, [show, params])
 
-  const seasons = useMemo(() => {
-    if (!show) {
-      return []
-    }
-    return Array.from(new Set(orderedEpisodes(show).map((episode) => episode.season)))
-  }, [show])
+  const seasons = useMemo(
+    () => Array.from(new Set(episodes.map((episode) => episode.season))),
+    [episodes]
+  )
 
   const activeSeason = selected?.season ?? seasons[0]
   const seasonEpisodes = useMemo(() => {
-    if (!show || activeSeason === undefined) {
+    if (activeSeason === undefined) {
       return []
     }
-    return orderedEpisodes(show).filter((episode) => episode.season === activeSeason)
-  }, [show, activeSeason])
+    return episodes.filter((episode) => episode.season === activeSeason)
+  }, [episodes, activeSeason])
 
   useEffect(() => {
     if (!show || !selected) {
@@ -71,47 +75,37 @@ export function WatchPage() {
 
   if (!show) {
     return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyTitle>Show not found</EmptyTitle>
-          <EmptyDescription>Pick another title from home.</EmptyDescription>
-        </EmptyHeader>
+      <div className="flex flex-col gap-3">
+        <p className="font-heading text-xl">Show not found</p>
         <ButtonLink to="/">Back home</ButtonLink>
-      </Empty>
+      </div>
     )
   }
 
   if (!selected) {
     return (
-      <Empty className="border">
-        <EmptyHeader>
-          <EmptyTitle>No episodes yet</EmptyTitle>
-          <EmptyDescription>{show.title} has no episodes in this catalog.</EmptyDescription>
-        </EmptyHeader>
+      <div className="flex flex-col gap-3">
+        <p className="font-heading text-xl">No episodes yet</p>
         <ButtonLink to="/">Back home</ButtonLink>
-      </Empty>
+      </div>
     )
   }
 
   const previous = neighborEpisode(show, selected.season, selected.number, -1)
   const next = neighborEpisode(show, selected.season, selected.number, 1)
-  const castLine = billedCredits(show)
-    .slice(0, 6)
-    .map((credit) => requirePerson(credit.personId).name)
-    .join(" · ")
 
   function openEpisode(season: number, number: number) {
-    setParams({ s: String(season), e: String(number) })
+    setParams({ s: String(season), e: String(number) }, { replace: true })
   }
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(`/series/${show.id}`)}>
-          <ChevronLeftIcon data-icon="inline-start" />
-          {show.title}
-        </Button>
-      </div>
+      <Link
+        to={`/series/${show.id}`}
+        className="text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← {show.title}
+      </Link>
 
       <EpisodePlayer
         key={`${show.id}-${selected.season}-${selected.number}`}
@@ -127,12 +121,16 @@ export function WatchPage() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="font-heading text-2xl">
-            {episodeLine(show.title, selected.season, selected.number, selected.title)}
+            {episodeLine(
+              show.title,
+              selected.season,
+              selected.number,
+              selected.title
+            )}
           </h2>
-          <p className="text-sm text-muted-foreground">{formatPosted(selected.aired)}</p>
-          {castLine ? (
-            <p className="text-sm text-muted-foreground">{castLine}</p>
-          ) : null}
+          <p className="text-sm text-muted-foreground">
+            {formatPosted(selected.aired)}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -144,7 +142,6 @@ export function WatchPage() {
               }
             }}
           >
-            <ChevronLeftIcon data-icon="inline-start" />
             Previous
           </Button>
           <Button
@@ -157,7 +154,6 @@ export function WatchPage() {
             data-testid="next-episode"
           >
             Next
-            <ChevronRightIcon data-icon="inline-end" />
           </Button>
         </div>
       </div>
@@ -172,7 +168,9 @@ export function WatchPage() {
                 size="sm"
                 variant={season === activeSeason ? "default" : "outline"}
                 onClick={() => {
-                  const first = orderedEpisodes(show).find((episode) => episode.season === season)
+                  const first = episodes.find(
+                    (episode) => episode.season === season
+                  )
                   if (first) {
                     openEpisode(first.season, first.number)
                   }
@@ -183,10 +181,11 @@ export function WatchPage() {
             ))}
           </div>
         ) : null}
-        <div className="flex flex-col overflow-hidden rounded-xl border">
+        <div className="flex flex-col divide-y overflow-hidden rounded-xl border">
           {seasonEpisodes.map((episode) => {
             const active =
-              episode.season === selected.season && episode.number === selected.number
+              episode.season === selected.season &&
+              episode.number === selected.number
             return (
               <button
                 key={`${episode.season}-${episode.number}`}
@@ -194,13 +193,18 @@ export function WatchPage() {
                 data-testid={`episode-${episode.season}-${episode.number}`}
                 className={
                   active
-                    ? "flex items-baseline gap-3 bg-muted px-4 py-3 text-left"
-                    : "flex items-baseline gap-3 px-4 py-3 text-left hover:bg-muted/60"
+                    ? "flex min-h-11 items-center bg-muted px-4 py-3 text-left"
+                    : "flex min-h-11 items-center px-4 py-3 text-left hover:bg-muted/60"
                 }
                 onClick={() => openEpisode(episode.season, episode.number)}
               >
                 <span className="min-w-0 flex-1 font-medium">
-                  {episodeLine(show.title, episode.season, episode.number, episode.title)}
+                  {episodeLine(
+                    show.title,
+                    episode.season,
+                    episode.number,
+                    episode.title
+                  )}
                 </span>
               </button>
             )
