@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Head Unit Respring</string>
+    <string name="subtitle">Flip the switch to respring this head unit</string>
+    <string name="toggle_label">Respring</string>
+    <string name="status_ready">Ready</string>
+    <string name="status_restart_requested">Respring requested</string>
+</resources>

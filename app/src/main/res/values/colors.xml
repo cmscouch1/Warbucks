@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background">#FF0F1720</color>
+    <color name="on_background">#FFF5F7FA</color>
+    <color name="on_background_muted">#FFB7C0CC</color>
+    <color name="accent">#FF3DDC84</color>
+    <color name="track">#FF2A3644</color>
+    <color name="ic_launcher_background">#FF0F1720</color>
+</resources>
