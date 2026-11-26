@@ -1,0 +1,83 @@
+{
+ "rule": "20 CFR 404.1574(b)(2) and (b)(3): earnings that average more than the yearly amount ordinarily show SGA. Earnings equal to or less than that amount ordinarily show that the person has not engaged in SGA.",
+ "amounts": [
+  {
+   "year": 2015,
+   "blind": 1820,
+   "nonBlind": 1090,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  },
+  {
+   "year": 2016,
+   "blind": 1820,
+   "nonBlind": 1130,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  },
+  {
+   "year": 2017,
+   "blind": 1950,
+   "nonBlind": 1170,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  },
+  {
+   "year": 2018,
+   "blind": 1970,
+   "nonBlind": 1180,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  },
+  {
+   "year": 2019,
+   "blind": 2040,
+   "nonBlind": 1220,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  },
+  {
+   "year": 2020,
+   "blind": 2110,
+   "nonBlind": 1260,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  },
+  {
+   "year": 2021,
+   "blind": 2190,
+   "nonBlind": 1310,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  },
+  {
+   "year": 2022,
+   "blind": 2260,
+   "nonBlind": 1350,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  },
+  {
+   "year": 2023,
+   "blind": 2460,
+   "nonBlind": 1470,
+   "source": "SSA COLA Fact Sheet 2024, https://www.ssa.gov/news/en/cola/factsheets/2024.html"
+  },
+  {
+   "year": 2024,
+   "blind": 2590,
+   "nonBlind": 1550,
+   "source": "SSA COLA Fact Sheet 2024; SSA Red Book, What's New in 2024"
+  },
+  {
+   "year": 2025,
+   "blind": 2700,
+   "nonBlind": 1620,
+   "source": "SSA COLA Fact Sheet 2026, comparison column for 2025"
+  },
+  {
+   "year": 2026,
+   "blind": 2830,
+   "nonBlind": 1690,
+   "source": "90 FR 49047 (Nov. 3, 2025); SSA COLA Fact Sheet 2026"
+  },
+  {
+   "year": 2027,
+   "blind": 2950,
+   "nonBlind": 1770,
+   "source": "SSA OACT SGA table, https://www.ssa.gov/OACT/COLA/sga.html"
+  }
+ ]
+}
