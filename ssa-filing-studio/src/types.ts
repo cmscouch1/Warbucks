@@ -53,7 +53,7 @@ export interface WeighedSentence {
   reservedIssue: boolean;
   reservedWhy: string | null;
   sourceName: string | null;
-  provenance: { documentId: string | null; pageNumber: number | null; sourceName: string | null; sourceRole: string | null };
+  provenance: { documentId: string | null; pageNumber: number | null; sourcePageLabel: string | null; ocrConfidence: "high" | "medium" | "low" | "unreadable" | "not-applicable" | null; sourceName: string | null; sourceRole: string | null };
   tags: string[];
   legallyIncompetentFor: string[];
 }
