@@ -345,9 +345,9 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   });
 
   const filingDate = isoDate(input.filingDate);
-  const referenceDate = isoDate(input.determinationDate) ?? filingDate ?? new Date().toISOString().slice(0, 10);
+  const referenceDate = isoDate(input.determinationDate) ?? filingDate ?? "";
   const overrides: string[] = [];
-  const opinionRule = filingDate !== null && filingDate < "2017-03-27" ? "404.1527" : "404.1520c";
+  const opinionRule = filingDate === null ? null : filingDate < "2017-03-27" ? "404.1527" : "404.1520c";
 
   let age = input.age ?? null;
   if (input.age !== undefined) overrides.push("Age was taken from the structured field rather than the narrative.");
@@ -361,7 +361,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     }
   }
   let birthDate = isoDate(input.birthDate);
-  if (birthDate) {
+  if (birthDate && referenceDate) {
     const attained = ssaAge(birthDate, referenceDate);
     if (attained < 0 || attained > 120) {
       overrides.push("The birth date is not on or before the reference date, so it was not used as the age.");
@@ -429,13 +429,13 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   let earningsYear = input.earningsYear ?? (filingDate ? Number(filingDate.slice(0, 4)) : null);
   const yearInText = /\bin (20\d{2})\b/.exec(textAll);
   if (earningsYear === null && yearInText?.[1]) earningsYear = Number(yearInText[1]);
-  if (earningsYear === null && monthlyEarnings !== null) earningsYear = Number(referenceDate.slice(0, 4));
+  if (earningsYear === null && monthlyEarnings !== null && referenceDate) earningsYear = Number(referenceDate.slice(0, 4));
 
   const onset = isoDate(input.onsetDate);
   let yearsSinceOnset: number | null = null;
-  if (onset) yearsSinceOnset = yearsBetween(Number(onset.slice(0, 4)), referenceDate);
+  if (onset && referenceDate) yearsSinceOnset = yearsBetween(Number(onset.slice(0, 4)), referenceDate);
   const since = /\bsince (?:january |february |march |april |may |june |july |august |september |october |november |december )?(20\d{2})\b/i.exec(textAll);
-  if (yearsSinceOnset === null && since?.[1]) yearsSinceOnset = yearsBetween(Number(since[1]), referenceDate);
+  if (yearsSinceOnset === null && since?.[1] && referenceDate) yearsSinceOnset = yearsBetween(Number(since[1]), referenceDate);
 
   let duration: Facts["duration"] = "unknown";
   if (/\b(expected to result in death|terminal|end of life)\b/i.test(textAll)) duration = "met";
@@ -524,7 +524,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   ].filter((pattern) => pattern.test(textAll)).length;
 
   const pastWorkSgaShown = /\b(?:the |my |past |that )work was (?:substantial gainful activity|full[- ]time|sga)\b|\bworked full[- ]time\b|\bfull[- ]time (?:as|job|work)\b/i.test(textAll);
-  const work = readWork(weighed, referenceDate).map((job) => ({ ...job, sgaShown: job.sgaShown || pastWorkSgaShown }));
+  const work = readWork(weighed, referenceDate || null).map((job) => ({ ...job, sgaShown: job.sgaShown || pastWorkSgaShown }));
   const neverWorked = /\bnever worked\b|\bno (?:past )?(?:relevant )?work (?:experience|history)\b|\bno past relevant work\b/i.test(textAll);
   const confirmedPrw = work.filter((job) => job.withinFiveYears === true && !job.underThirtyDays && job.skill !== null && job.sgaShown);
   const experience = experienceOf(work, neverWorked, textAll);
@@ -549,6 +549,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     program: input.program ?? "title-ii",
     filingDate,
     referenceDate,
+    referenceDateKnown: referenceDate.length > 0,
     opinionRule,
     age,
     birthDate,
@@ -717,7 +718,7 @@ export function exertionalFromLimits(
   return { exertional: "unknown", fullRange: false, why: "The stated limits do not line up with a full exertional range in 20 CFR 404.1567." };
 }
 
-function readWork(sentences: WeighedSentence[], referenceDate: string): WorkFact[] {
+function readWork(sentences: WeighedSentence[], referenceDate: string | null): WorkFact[] {
   const jobs: WorkFact[] = [];
   for (const sentence of sentences) {
     const title = /\b(?:worked as|job as|work as|employed as|was an?)\s+(?:an?\s+)?([a-z][a-z ]{2,40}?)(?:\.|,| from| for| until)/i.exec(sentence.text);
@@ -732,8 +733,8 @@ function readWork(sentences: WeighedSentence[], referenceDate: string): WorkFact
       calendarDays = Number(daySpan[1]);
       underThirty = calendarDays < 30;
     }
-    const refYear = Number(referenceDate.slice(0, 4));
-    const withinFiveYears = end ? refYear - Number(end) <= 5 && refYear - Number(end) >= 0 : null;
+    const refYear = referenceDate ? Number(referenceDate.slice(0, 4)) : null;
+    const withinFiveYears = end && refYear !== null ? refYear - Number(end) <= 5 && refYear - Number(end) >= 0 : null;
     const lift = /(\d+)\s*pounds?/i.exec(sentence.text);
     let skill: WorkFact["skill"] = null;
     if (/\bunskilled\b|\bsvp\s*[12]\b/i.test(sentence.text)) skill = "unskilled";
