@@ -179,6 +179,116 @@ export function createMcpServer(): McpServer {
     }
   });
 
+  server.registerTool("grade_complete_record", {
+    title: "Grade a complete SSA evidence record",
+    description: "Primary full-record intake for an SSA filing review. Supply the claimant narrative AND every relevant document in full text, with source, author/role, dates, page count, exhibit reference, and submission status. Include prior decisions, medical records, opinion evidence, treatment chronology, work history, function reports, third-party statements, and procedural records. The tool preserves a document manifest and passes the complete text to the existing deterministic evaluator. IMPORTANT: the current deterministic engine does not independently adjudicate Title II insured status/DLI, protective-filing disputes, prior-decision effect, or concurrent Title II/Title XVI eligibility; it flags those as agent-review issues rather than silently treating them as resolved. Never omit a document because it appears duplicative; identify duplicates in metadata and let the reviewing agent assess materiality.",
+    inputSchema: {
+      claimantNarrative: z.string().optional().describe("Claimant's own complete narrative, verbatim. Do not summarize away details."),
+      documents: z.array(z.object({
+        documentId: z.string().min(1).describe("Stable unique identifier for this record item."),
+        title: z.string().min(1).describe("Document title or descriptive label."),
+        documentType: z.string().min(1).describe("For example: treatment note, psychiatric evaluation, medical opinion, ALJ decision, Appeals Council notice, function report, third-party statement, earnings record, work history, or correspondence."),
+        sourceName: z.string().optional().describe("Provider, agency, witness, employer, or originating institution."),
+        sourceRole: z.string().optional().describe("Author's role/credentials or relationship to claimant; do not infer credentials."),
+        documentDate: z.string().optional().describe("Document creation/signature date, if known."),
+        periodStart: z.string().optional().describe("Beginning of the period described by the document."),
+        periodEnd: z.string().optional().describe("End of the period described by the document."),
+        pageCount: z.number().int().nonnegative().optional(),
+        exhibitReference: z.string().optional().describe("SSA exhibit/page reference, if assigned."),
+        submissionStatus: z.enum(["submitted", "uploaded", "served", "in-record", "not-submitted", "unknown"]).optional(),
+        duplicateOf: z.string().optional().describe("Another documentId if this is a duplicate; retain it rather than silently dropping it."),
+        fullText: z.string().min(1).describe("Complete extracted/OCR text. Include every page, headings, tables, signatures, and relevant footnotes. Do not replace with an AI summary."),
+      })).min(1).describe("All relevant source documents, not merely selected excerpts."),
+      proceduralHistory: z.string().optional().describe("Complete procedural chronology, including applications, protective filing dates, determinations, hearings, decisions, appeals, notices, and receipt status."),
+      workHistory: z.string().optional().describe("Complete work chronology with employers, duties, dates, hours, earnings, accommodations, subsidies, unsuccessful work attempts, and job demands when known."),
+      treatmentChronology: z.string().optional().describe("Longitudinal treatment chronology, including providers, encounters, diagnoses, findings, medication changes, response, adverse effects, gaps, referrals, and attempted contacts."),
+      dateLastInsured: z.string().optional().describe("Title II date last insured, if established by an SSA earnings/insured-status record. Do not infer it."),
+      protectiveFilingDate: z.string().optional().describe("Protective filing date, kept distinct from application completion/submission/receipt dates."),
+      actualFilingDate: z.string().optional().describe("Actual application submission/filing date, if verified."),
+      priorDecisionDate: z.string().optional().describe("Date of any prior SSA decision."),
+      program: z.enum(["title-ii", "title-xvi"]).optional(),
+      filingDate: z.string().optional().describe("Date used for the current application/rule selection only when established."),
+      age: z.number().int().optional(),
+      birthDate: z.string().optional(),
+      education: z.enum(["illiterate", "marginal", "limited", "high-school-or-more"]).optional(),
+      directEntryToSkilledWork: z.boolean().optional(),
+      monthlyEarnings: z.number().optional(),
+      earningsYear: z.number().int().optional(),
+      selfEmployed: z.boolean().optional(),
+      statutoryBlindness: z.boolean().optional(),
+      onsetDate: z.string().optional(),
+    },
+    annotations: readOnly,
+  }, async (args) => {
+    try {
+      const sections: string[] = [];
+      if (args.claimantNarrative) sections.push("CLAIMANT NARRATIVE (verbatim):\\n" + args.claimantNarrative);
+      if (args.proceduralHistory) sections.push("PROCEDURAL HISTORY (source supplied; dates/status must be verified):\\n" + args.proceduralHistory);
+      if (args.workHistory) sections.push("WORK HISTORY (source supplied; do not infer SGA or PRW from job title alone):\\n" + args.workHistory);
+      if (args.treatmentChronology) sections.push("TREATMENT CHRONOLOGY (source supplied; preserve longitudinal sequence):\\n" + args.treatmentChronology);
+      for (const doc of args.documents) {
+        const metadata = [
+          "DOCUMENT " + doc.documentId,
+          "Title: " + doc.title,
+          "Type: " + doc.documentType,
+          "Source: " + (doc.sourceName ?? "not supplied"),
+          "Author/source role: " + (doc.sourceRole ?? "not supplied"),
+          "Document date: " + (doc.documentDate ?? "not supplied"),
+          "Period: " + (doc.periodStart ?? "unknown") + " through " + (doc.periodEnd ?? "unknown"),
+          "Pages: " + (doc.pageCount ?? "unknown"),
+          "SSA exhibit: " + (doc.exhibitReference ?? "not supplied"),
+          "Submission status: " + (doc.submissionStatus ?? "unknown"),
+          "Duplicate of: " + (doc.duplicateOf ?? "not identified"),
+        ].join("\\n");
+        sections.push(metadata + "\\nFULL SOURCE TEXT (do not treat metadata as evidence):\\n" + doc.fullText);
+      }
+      const narrative = sections.join("\\n\\n===== NEXT RECORD ITEM =====\\n\\n");
+      const filing = toFiling({
+        narrative,
+        program: args.program,
+        filingDate: args.filingDate,
+        age: args.age,
+        birthDate: args.birthDate,
+        education: args.education,
+        directEntryToSkilledWork: args.directEntryToSkilledWork,
+        monthlyEarnings: args.monthlyEarnings,
+        earningsYear: args.earningsYear,
+        selfEmployed: args.selfEmployed,
+        statutoryBlindness: args.statutoryBlindness,
+        onsetDate: args.onsetDate,
+      });
+      const report = gradeForModel(filing);
+      const unsupported = [];
+      if (args.dateLastInsured) unsupported.push("Date last insured supplied but not adjudicated by the current engine; independently analyze Title II insured status and onset before/through the DLI.");
+      if (args.protectiveFilingDate || args.actualFilingDate) unsupported.push("Protective filing and actual submission dates are preserved in the intake manifest but not reconciled by the current engine; distinguish protective filing, application completion, submission, and SSA receipt.");
+      if (args.priorDecisionDate) unsupported.push("Prior decision supplied but not analyzed for administrative res judicata, reopening, prior findings, or changed circumstances by the current engine.");
+      if (!args.program) unsupported.push("Program/title not specified; do not assume Title II, Title XVI, or concurrent eligibility.");
+      return json({
+        recordIntake: {
+          documentCount: args.documents.length,
+          documents: args.documents.map(({ fullText, ...metadata }) => ({ ...metadata, characterCount: fullText.length })),
+          suppliedSections: {
+            claimantNarrative: Boolean(args.claimantNarrative),
+            proceduralHistory: Boolean(args.proceduralHistory),
+            workHistory: Boolean(args.workHistory),
+            treatmentChronology: Boolean(args.treatmentChronology),
+          },
+          preservedButNotEngineAdjudicated: {
+            dateLastInsured: args.dateLastInsured ?? null,
+            protectiveFilingDate: args.protectiveFilingDate ?? null,
+            actualFilingDate: args.actualFilingDate ?? null,
+            priorDecisionDate: args.priorDecisionDate ?? null,
+          },
+        },
+        requiredAgentReview: unsupported,
+        deterministicGrade: report,
+        instruction: "This is a full-text intake plus the current deterministic bench result, not a substitute for source-by-source legal analysis. The reviewing agent must independently reconcile every document, preserve conflicting accounts, identify missing pages/exhibits and submission/receipt proof, and analyze every item listed in requiredAgentReview. Never describe a supplied document as filed, received, or considered merely because it is present here.",
+      });
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
   server.registerTool("weigh_sentences", {
     title: "Weigh each sentence",
     description: "Classify every sentence into a 20 CFR 404.1513 evidence category and say what that sentence is legally incompetent to prove. This is the sentence method. It is not a per-word percentage. Objective medical evidence, medical opinion, other medical evidence, and nonmedical evidence do different jobs.",
