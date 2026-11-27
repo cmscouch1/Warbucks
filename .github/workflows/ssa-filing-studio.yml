@@ -28,6 +28,8 @@ jobs:
           cache: npm
           cache-dependency-path: ssa-filing-studio/package-lock.json
       - run: npm ci
+      - name: Strict TypeScript check
+        run: npm run typecheck
       - name: Unit and contract tests
         run: npm test
       - name: Deterministic bench self-test
