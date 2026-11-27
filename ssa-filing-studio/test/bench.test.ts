@@ -37,6 +37,19 @@ describe("bench", () => {
   });
 });
 
+describe("determination-date controls", () => {
+  it("uses the adjudication date rather than the filing date for age and past-work timing", () => {
+    const { facts } = readFacts({
+      narrative: "I was born on January 1, 1980.",
+      filingDate: "2025-01-01",
+      determinationDate: "2026-01-01",
+      birthDate: "1980-01-01",
+    });
+    expect(facts.referenceDate).toBe("2026-01-01");
+    expect(facts.age).toBe(46);
+  });
+});
+
 describe("full-record provenance boundaries", () => {
   it("does not leak a medical source attribution into a later lay-witness document", () => {
     const { facts } = readFacts({
