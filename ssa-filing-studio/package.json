@@ -7,6 +7,7 @@
   "scripts": {
     "corpus": "python3 scripts/build-corpus.py",
     "test": "vitest run",
+    "test:runtime": "vitest run test/runtime.test.ts",
     "mcp": "tsx src/mcp.ts",
     "start": "tsx src/server.ts",
     "self-test": "tsx src/selftest-cli.ts"

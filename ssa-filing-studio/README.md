@@ -27,6 +27,8 @@ npm test
 npm start
 ```
 
+`npm test` includes the runtime suite. That suite starts `src/server.ts` and the stdio MCP process and grades filings through both, the same way a browser and a model client do.
+
 Open http://localhost:8787. Paste a filing or use a sample, then choose **Weigh this filing**. The page leads with the sequential outcome, then the index, the sentence ledger, the factor quotes, the draft, and the audit.
 
 If `npm run self-test` fails, the server answers `POST /api/grade` with 503 and does not return a grade.
