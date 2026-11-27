@@ -74,6 +74,10 @@ function reservedHit(text: string): string | null {
 }
 
 function sourceName(text: string): string | null {
+  const sourceLine = /^Source:\s*(.+)$/i.exec(text.trim());
+  if (sourceLine?.[1] && (MEDICAL_SOURCE.test(sourceLine[1]) || NOT_ACCEPTABLE_SOURCE.test(sourceLine[1]))) {
+    return sourceLine[1].trim();
+  }
   const named = /\b(?:Dr\.?|Doctor)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/.exec(text);
   if (named) return `Dr. ${named[1]}`;
   const role = /\b(psychiatrist|psychologist|rheumatologist|neurologist|orthopedist|cardiologist|surgeon)\b/i.exec(text);
@@ -88,6 +92,9 @@ function classify(text: string, carriedSource: string | null): {
   tags: string[];
 } {
   const tags: string[] = [];
+  if (/^(?:DOCUMENT\\s+|Title:|Type:|Source:|Document date:|Period:|Pages:|SSA exhibit:|Submission status:|Duplicate of:|FULL SOURCE TEXT|CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text.trim())) {
+    return { category: "unclassified", citation: "record-metadata", why: "Document-intake metadata is preserved for provenance but is not itself claimant or medical evidence.", tags };
+  }
   if (/\b(years old|year-old|grade|high school|college|ged|worked as|job|employ(?:ed|ment)?|unemployed|earn(?:ing|ings|s)?|work(?:ing|ed)?)\b/i.test(text)) tags.push("vocational-fact");
   if (FUNCTION_WORD.test(text)) tags.push("function");
   if (OBJECTIVE.test(text)) tags.push("objective-language");
@@ -265,6 +272,10 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   pieces.forEach((piece, index) => {
     const text = piece.text.trim();
     if (!text) return;
+    if (/^(?:DOCUMENT\\s+|CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text)) {
+      carried = null;
+      carriedNonAms = false;
+    }
     const named = sourceName(text);
     if (named) {
       carried = named;
