@@ -37,6 +37,7 @@ The MCP now exposes:
 - `recursive-full-record-audit`: a prompt for repeated legal, medical, functional, vocational, procedural, chronology, completeness, and adversarial review.
 - `grade_complete_record`: full-text and page-segmented document intake with provenance, original page labels, OCR quality, missing/duplicate page checks, exhibit references, duplicates, and filing/receipt status.
 - `get_legal_framework`: returns the coverage map.
+- `fetch_official_authority`: retrieves current source text from allowlisted official government domains (eCFR, SSA, U.S. Code, Federal Register, GovInfo, Third Circuit, and Supreme Court), recording the retrieval timestamp, final URL, and SHA-256. This supports live retrieval of authority not yet in the static corpus.
 - `validate_audit_closure`: checks reported closure gates, including two consecutive full passes with no new actionable flags, resolved legal-domain dispositions, verified remediation, and test results. It validates supplied attestations; it does not independently prove them.
 
 Supply the actual determination/hearing date separately from the filing date. Age and the past-relevant-work lookback are evaluated at the determination date when supplied. The filing date continues to select the applicable medical-opinion regime.
