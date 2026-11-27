@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { compareFilings, quoteForModel, sgaForModel, vocationalForModel } from "../src/bench-api.js";
 import { quoteAuthority } from "../src/corpus.js";
 import { gradeFiling } from "../src/grade.js";
+import { readFacts } from "../src/facts.js";
 import { createMcpServer } from "../src/mcp.js";
 import { runSelfTest } from "../src/selftest.js";
 import { joinSentences, splitSentences } from "../src/sentences.js";
@@ -33,6 +34,28 @@ describe("bench", () => {
     });
     expect(report.vocational.directed).toBe(false);
     expect(report.sequential.outcome).not.toBe("disabled");
+  });
+});
+
+describe("full-record provenance boundaries", () => {
+  it("does not leak a medical source attribution into a later lay-witness document", () => {
+    const { facts } = readFacts({
+      narrative: [
+        "DOCUMENT 1",
+        "Source: Dr. Jane Smith | Role: psychiatrist",
+        "She opined that I cannot concentrate for more than 10 minutes.",
+        "DOCUMENT 2",
+        "Source: Elaine Summers | Role: mother",
+        "She observed that I avoid stores because I panic.",
+      ].join("\\n"),
+    });
+    const opinion = facts.sentences.find((sentence) => sentence.text.startsWith("She opined"));
+    const witness = facts.sentences.find((sentence) => sentence.text.startsWith("She observed"));
+    expect(opinion?.category).toBe("medical-opinion");
+    expect(opinion?.sourceName).toContain("Dr. Jane Smith");
+    expect(witness?.category).toBe("nonmedical");
+    expect(witness?.sourceName).toBeNull();
+    expect(facts.sentences.filter((sentence) => sentence.citation === "record-metadata").length).toBeGreaterThan(0);
   });
 });
 
