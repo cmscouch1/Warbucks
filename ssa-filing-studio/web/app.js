@@ -1,6 +1,7 @@
 const narrative = document.querySelector("#narrative");
 const program = document.querySelector("#program");
 const filingDate = document.querySelector("#filingDate");
+const birthDate = document.querySelector("#birthDate");
 const samples = document.querySelector("#samples");
 const gradeButton = document.querySelector("#grade");
 const status = document.querySelector("#status");
@@ -48,6 +49,7 @@ function render(report) {
       <p class="outcome ${outcomeClass(report.sequential.outcome)}">${escapeHtml(outcomeLabel(report.sequential.outcome))}</p>
       <p>${escapeHtml(report.sequential.headline)}</p>
       <p class="index">Filing strength index <strong>${report.filingStrength}</strong> of 100. ${report.pointsLeft} points sit in missing facts. This index is not an SSA score.</p>
+      ${(report.overrides ?? []).length ? `<ul class="callout">${report.overrides.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
       ${report.reliable ? "" : `<p><strong>The audit failed.</strong> The number above is not a grade.</p><ul>${audit}</ul>`}
     </article>
     <h2>Sequential evaluation</h2>
@@ -55,6 +57,7 @@ function render(report) {
     <h2>Listing</h2>
     <p>${escapeHtml(report.listing.explanation)}</p>
     <h2>Vocational rules</h2>
+    ${report.vocational.borderline ? `<p class="callout">Borderline age. Chronological rule ${escapeHtml(report.vocational.borderline.chronologicalRuleId ?? "none")} stays. The higher age is ${report.vocational.borderline.higherAge}, ${report.vocational.borderline.daysUntilHigherAge} days away, and rule ${escapeHtml(report.vocational.borderline.higherRuleId ?? "none")} would direct disabled. The category was not moved.</p>` : ""}
     <p>${escapeHtml(report.vocational.explanation)}</p>
     <h2>Sentence ledger</h2>
     <ol class="ledger">${sentences}</ol>
@@ -77,6 +80,7 @@ async function loadSamples() {
     button.addEventListener("click", () => {
       narrative.value = sample.narrative;
       filingDate.value = sample.filingDate;
+      birthDate.value = "";
     });
     samples.append(button);
   }
@@ -93,6 +97,7 @@ async function weigh() {
         narrative: narrative.value,
         program: program.value,
         filingDate: filingDate.value,
+        ...(birthDate.value ? { birthDate: birthDate.value } : {}),
       }),
     });
     const body = await response.json();

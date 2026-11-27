@@ -84,6 +84,8 @@ export interface WorkFact {
   underThirtyDays: boolean;
   liftPounds: number | null;
   skill: "unskilled" | "semiskilled" | "skilled" | null;
+  /** True when this job is described as substantial gainful activity or full-time work. */
+  sgaShown: boolean;
   sentenceIndex: number;
 }
 
@@ -111,6 +113,10 @@ export interface Facts {
   selfEmployed: boolean;
   subsidyOrIrweUnresolved: boolean;
   unsuccessfulWorkAttempt: boolean;
+  /** Work of six months or less that stopped because of the impairment, whether or not the 30-day break is stated. */
+  workAttemptDescribed: boolean;
+  /** True when past work is described as substantial gainful activity or full-time work. */
+  pastWorkSgaShown: boolean;
   workingNow: boolean | null;
   statutoryBlindness: boolean;
   duration: "met" | "not-met" | "unknown";
@@ -198,6 +204,13 @@ export interface ListingResult {
   elements: ListingElement[];
 }
 
+export interface BorderlineAge {
+  daysUntilHigherAge: number;
+  higherAge: number;
+  higherRuleId: string | null;
+  chronologicalRuleId: string | null;
+}
+
 export interface VocationalResult {
   directed: boolean;
   outcome: Outcome;
@@ -205,6 +218,8 @@ export interface VocationalResult {
   explanation: string;
   citations: string[];
   candidates: { id: string; decision: Outcome; age: string; education: string; experience: string }[];
+  /** Set only when POMS DI 25001.001's three borderline conditions are met. The chronological rule is not moved. */
+  borderline: BorderlineAge | null;
 }
 
 export interface FactorCheck {
@@ -259,6 +274,8 @@ export interface GradeReport {
   factors: FactorResult[];
   sentences: WeighedSentence[];
   opinions: SourceOpinion[];
+  /** When a birth date or a structured field replaced a number written in the narrative. */
+  overrides: string[];
   draft: Draft;
   audit: AuditReport;
 }

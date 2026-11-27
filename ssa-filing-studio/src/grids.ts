@@ -95,8 +95,22 @@ function proseHas(phrase: string): boolean {
   return gridProse().some((paragraph) => paragraph.toLowerCase().includes(phrase.toLowerCase()));
 }
 
+let rulesByTable: Map<string, ReturnType<typeof gridRules>> | null = null;
+
+function rulesFor(table: string): ReturnType<typeof gridRules> {
+  if (!rulesByTable) {
+    rulesByTable = new Map();
+    for (const rule of gridRules()) {
+      const list = rulesByTable.get(rule.exertional) ?? [];
+      list.push(rule);
+      rulesByTable.set(rule.exertional, list);
+    }
+  }
+  return rulesByTable.get(table) ?? [];
+}
+
 function notDirected(explanation: string, citations: string[], candidates: VocationalResult["candidates"] = []): VocationalResult {
-  return { directed: false, outcome: "not-determinable", ruleId: null, explanation, citations, candidates };
+  return { directed: false, outcome: "not-determinable", ruleId: null, explanation, citations, candidates, borderline: null };
 }
 
 export function applyVocational(profile: VocationalProfile): VocationalResult {
@@ -120,6 +134,7 @@ export function applyVocational(profile: VocationalProfile): VocationalResult {
       explanation: "Appendix 2, 204.00 says the capacity for heavy or very heavy work ordinarily is not the basis for a finding of disabled. The person retains substantial work capability at all lesser levels.",
       citations: ["20 CFR Part 404 Subpart P Appendix 2, 204.00"],
       candidates: [],
+      borderline: null,
     };
   }
   if (profile.exertional === "less-than-sedentary" || !profile.fullRange) {
@@ -134,6 +149,7 @@ export function applyVocational(profile: VocationalProfile): VocationalResult {
         explanation: `The full range of sedentary work would already direct disabled under Rule ${sedentary.ruleId}. A narrower residual functional capacity does not create jobs that rule says are unavailable (Appendix 2, 200.00(e)(2)). ${profile.exertional === "less-than-sedentary" ? "The medical limits are below sedentary work." : "The full range of the stated exertional level was not established."}`,
         citations: ["20 CFR Part 404 Subpart P Appendix 2, 200.00(e)(2)"],
         candidates: sedentary.candidates,
+        borderline: null,
       };
     }
     const youngerNote = profile.age < 50 && proseHas("does not necessarily equate with a finding of “disabled.”")
@@ -147,7 +163,7 @@ export function applyVocational(profile: VocationalProfile): VocationalResult {
   }
 
   const table = profile.exertional;
-  const rules = gridRules().filter((rule) => rule.exertional === table);
+  const rules = rulesFor(table);
   const ageLabel = ageCandidates(profile.age).find((label) => rules.some((rule) => rule.age === label));
   if (!ageLabel) {
     return notDirected("No medical-vocational rule in this exertional table uses this age category.", ["20 CFR Part 404 Subpart P Appendix 2"]);
@@ -207,6 +223,7 @@ export function applyVocational(profile: VocationalProfile): VocationalResult {
     explanation: `Rule ${rule.id} directs ${rule.decision === "disabled" ? "disabled" : "not disabled"}: ${rule.age}; ${rule.education}; ${rule.experience}. Every finding used here is in the record, and the rule's decision is the decision printed in Appendix 2.`,
     citations: [`20 CFR Part 404 Subpart P Appendix 2, Rule ${rule.id}`],
     candidates,
+    borderline: null,
   };
 }
 

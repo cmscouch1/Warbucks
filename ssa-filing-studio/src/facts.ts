@@ -211,8 +211,45 @@ function earningsFromText(text: string): number | null {
 }
 
 function isoDate(value: string | undefined): string | null {
-  if (!value) return null;
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+  return value;
+}
+
+function addDays(iso: string, days: number): string {
+  const date = new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function daysBetween(from: string, to: string): number {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  return Math.round((end - start) / 86_400_000);
+}
+
+/** SSA age is attained the day before the birthday (POMS DI 25001.001). */
+export function ssaAge(birth: string, on: string): number {
+  const anniversary = addDays(birth, -1);
+  let years = Number(on.slice(0, 4)) - Number(anniversary.slice(0, 4));
+  if (on.slice(5) < anniversary.slice(5)) years -= 1;
+  return years;
+}
+
+/** A few months, used only to flag. POMS DI 25001.001 states no fixed cutoff. */
+const BORDERLINE_DAYS = 183;
+
+export function borderlineWindow(birth: string, on: string, age: number): { higherAge: number; daysUntil: number } | null {
+  const higher = age < 50 ? 50 : age < 55 ? 55 : age < 60 ? 60 : null;
+  if (higher === null) return null;
+  const attain = addDays(`${Number(birth.slice(0, 4)) + higher}-${birth.slice(5)}`, -1);
+  const days = daysBetween(on, attain);
+  if (days < 1 || days > BORDERLINE_DAYS) return null;
+  return { higherAge: higher, daysUntil: days };
 }
 
 function yearsBetween(startYear: number, endIso: string): number {
@@ -288,6 +325,20 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
       }
     }
   }
+  let birthDate = isoDate(input.birthDate);
+  if (birthDate) {
+    const attained = ssaAge(birthDate, referenceDate);
+    if (attained < 0 || attained > 120) {
+      overrides.push("The birth date is not on or before the reference date, so it was not used as the age.");
+      birthDate = null;
+    } else if (age === null) {
+      age = attained;
+      overrides.push("Age was computed from the birth date. A claimant attains an age the day before the birthday (POMS DI 25001.001).");
+    } else if (age !== attained) {
+      overrides.push(`The stated age is ${age}. The birth date attains age ${attained} as of ${referenceDate}. The birth date is used, because POMS DI 25001.001 says a claimant attains an age the day before the birthday.`);
+      age = attained;
+    }
+  }
 
   let education = input.education ?? null;
   if (input.education) overrides.push("Education was taken from the structured field.");
@@ -334,10 +385,11 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   const selfEmployed = input.selfEmployed === true || /\bself[- ]employed\b|\bmy business\b/i.test(textAll);
   const statutoryBlindness = input.statutoryBlindness === true || /\bstatutor(?:y|ily) blind/i.test(textAll);
   const subsidyOrIrweUnresolved = /\b(subsid(?:y|ized)|impairment-related work expense|\birwe\b)\b/i.test(textAll);
-  const unsuccessfulWorkAttempt =
-    workingNow === false &&
-    (/\bunsuccessful work attempt\b/i.test(textAll) ||
-      (/\b(had to stop|stopped because|forced to stop)\b/i.test(textAll) && /\b([1-6]\s+months?|a few months)\b/i.test(textAll)));
+  const workAttemptDescribed =
+    /\bunsuccessful work attempt\b/i.test(textAll) ||
+    (/\b(had to stop|stopped because|forced to stop)\b/i.test(textAll) && /\b([1-6]\s+months?|a few months)\b/i.test(textAll));
+  const uwaBreakStated = /\bbreak\b/i.test(textAll) && /\b(?:30|thirty)\s+(?:consecutive\s+)?days\b/i.test(textAll);
+  const unsuccessfulWorkAttempt = workingNow === false && workAttemptDescribed && uwaBreakStated;
 
   let earningsYear = input.earningsYear ?? (filingDate ? Number(filingDate.slice(0, 4)) : null);
   const yearInText = /\bin (20\d{2})\b/.exec(textAll);
@@ -374,7 +426,11 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
       .filter((id) => id && findListing(id)),
   )];
   const withCriteria = foundListingIds.filter((id) => findListing(id)?.paragraphs.some((paragraph) => /satisfied by/i.test(paragraph)) ?? false);
-  const listingIds = [...withCriteria, ...foundListingIds.filter((id) => !withCriteria.includes(id))];
+  const partBFirst = (ids: string[]) => [...ids].sort((left, right) => Number(Number(right.split(".")[0]) >= 100) - Number(Number(left.split(".")[0]) >= 100));
+  const restIds = foundListingIds.filter((id) => !withCriteria.includes(id));
+  const listingIds = age !== null && age < 18
+    ? [...partBFirst(withCriteria), ...partBFirst(restIds)]
+    : [...withCriteria, ...restIds];
   const equivalenceAlleged = /\b(medically equals|medical equivalence|equals (?:a |the )?listing)\b/i.test(textAll);
 
   const bySource = new Map<string, WeighedSentence[]>();
@@ -432,9 +488,10 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     /\b(adapt|manage oneself|changes in (?:a |the )?routine|work pressure)\b/i,
   ].filter((pattern) => pattern.test(textAll)).length;
 
-  const work = readWork(weighed, referenceDate);
+  const pastWorkSgaShown = /\b(?:the |my |past |that )work was (?:substantial gainful activity|full[- ]time|sga)\b|\bworked full[- ]time\b|\bfull[- ]time (?:as|job|work)\b/i.test(textAll);
+  const work = readWork(weighed, referenceDate).map((job) => ({ ...job, sgaShown: job.sgaShown || pastWorkSgaShown }));
   const neverWorked = /\bnever worked\b|\bno (?:past )?(?:relevant )?work (?:experience|history)\b|\bno past relevant work\b/i.test(textAll);
-  const confirmedPrw = work.filter((job) => job.withinFiveYears === true && !job.underThirtyDays && job.skill !== null);
+  const confirmedPrw = work.filter((job) => job.withinFiveYears === true && !job.underThirtyDays && job.skill !== null && job.sgaShown);
   const experience = experienceOf(work, neverWorked, textAll);
   const veryLittleAdjustment = /\bvery little(?:, if any,)? vocational adjustment\b|\bno vocational adjustment\b|\bsame industry\b/i.test(textAll);
   const medicalBlob = weighed
@@ -459,7 +516,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     referenceDate,
     opinionRule,
     age,
-    birthDate: isoDate(input.birthDate),
+    birthDate,
     education,
     directEntry,
     monthlyEarnings,
@@ -467,6 +524,8 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     selfEmployed,
     subsidyOrIrweUnresolved,
     unsuccessfulWorkAttempt,
+    workAttemptDescribed,
+    pastWorkSgaShown: pastWorkSgaShown || work.some((job) => job.sgaShown),
     workingNow,
     statutoryBlindness,
     duration,
@@ -570,7 +629,7 @@ function assessRfc(opinions: SourceOpinion[], conflict: string | null): Facts["r
     established: assessed.exertional !== "unknown",
     exertional: assessed.exertional,
     fullRange: assessed.fullRange,
-    why: assessed.why,
+    why: assessed.why + (usable.length > 1 ? " More than one usable opinion is in the file and they do not conflict by more than a quarter unit, so this bench uses the first. It does not pick the most persuasive." : ""),
     sit,
     standWalk,
     liftOccasional,
@@ -653,8 +712,9 @@ function readWork(sentences: WeighedSentence[], referenceDate: string): WorkFact
       withinFiveYears,
       underThirtyDays: underThirty,
       liftPounds: lift?.[1] ? Number(lift[1]) : null,
-      skill,
-      sentenceIndex: sentence.index,
+    skill,
+    sgaShown: /\b(substantial gainful|\bsga\b|full[- ]time|40 hours a week|forty hours a week)\b/i.test(sentence.text),
+    sentenceIndex: sentence.index,
     });
   }
   return jobs;

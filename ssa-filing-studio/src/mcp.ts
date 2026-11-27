@@ -31,7 +31,7 @@ function filingShape(narrative: string) {
     program: z.enum(["title-ii", "title-xvi"]).optional().describe("title-ii is SSDI. title-xvi is SSI. Earnings do not deny at step 1 for Title XVI statutory blindness (20 CFR 416.984)."),
     filingDate: z.string().optional().describe("YYYY-MM-DD. A date before 2017-03-27 selects 20 CFR 404.1527. Omitting it selects 20 CFR 404.1520c, and the report says so."),
     age: z.number().int().optional().describe("Use only when the record states the age. Do not estimate."),
-    birthDate: z.string().optional().describe("YYYY-MM-DD from the record. Used for borderline-age flagging."),
+    birthDate: z.string().optional().describe("YYYY-MM-DD from the record. Used to compute SSA age (attained the day before the birthday) and to flag a borderline age when POMS DI 25001.001's three conditions are met. The chronological category is not moved."),
     education: z.enum(["illiterate", "marginal", "limited", "high-school-or-more"]).optional().describe("illiterate means cannot read or write a simple message. marginal is 6th grade or less. limited is 7th through 11th."),
     directEntryToSkilledWork: z.boolean().optional().describe("True only if the record affirmatively finds that education provides direct entry into skilled work. Omit it when the record is silent."),
     monthlyEarnings: z.number().optional().describe("Average monthly countable earnings. Do not invent this."),

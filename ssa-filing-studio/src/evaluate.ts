@@ -1,4 +1,5 @@
 import { sgaRuleText } from "./corpus.js";
+import { borderlineWindow } from "./facts.js";
 import type { Facts, ListingResult } from "./types.js";
 import { applyVocational, sgaThreshold, type VocationalProfile } from "./grids.js";
 import type { FactorResult, Outcome, SequentialResult, StepResult, VocationalResult } from "./types.js";
@@ -28,8 +29,55 @@ function profileOf(facts: Facts, exertional: VocationalProfile["exertional"], fu
   };
 }
 
+function experienceWords(experience: Facts["experience"]): string {
+  if (experience === "not-transferable") return "not transferable";
+  return experience ?? "unstated";
+}
+
 export function evaluateVocational(facts: Facts): VocationalResult {
-  return applyVocational(profileOf(facts, facts.rfc.exertional, facts.rfc.fullRange));
+  const profile = profileOf(facts, facts.rfc.exertional, facts.rfc.fullRange);
+  let result = applyVocational(profile);
+  if (!facts.pastWorkSgaShown && facts.experience !== null && facts.experience !== "none" && result.directed) {
+    const withoutThatWork = applyVocational({ ...profile, experience: "none" });
+    if (withoutThatWork.outcome !== result.outcome || withoutThatWork.directed !== result.directed) {
+      const stated = result.ruleId ? `Rule ${result.ruleId} would direct ${result.outcome === "disabled" ? "disabled" : "not disabled"}` : "The stated experience would direct a conclusion";
+      const asNone = withoutThatWork.directed
+        ? `Treating the work as not past relevant work would direct ${withoutThatWork.outcome === "disabled" ? "disabled" : "not disabled"} under Rule ${withoutThatWork.ruleId}`
+        : "Treating the work as not past relevant work would not direct a conclusion";
+      result = {
+        directed: false,
+        outcome: "not-determinable",
+        ruleId: null,
+        explanation: `The filing describes the work as ${experienceWords(facts.experience)}, but it does not show that work was substantial gainful activity. 20 CFR 404.1560(b)(1) defines past relevant work as work that was substantial gainful activity. ${stated}. ${asNone}. Those results do not agree, so neither directs.`,
+        citations: ["20 CFR 404.1560(b)"],
+        candidates: [...result.candidates, ...withoutThatWork.candidates],
+        borderline: null,
+      };
+    }
+  }
+  return flagBorderline(facts, result);
+}
+
+function flagBorderline(facts: Facts, chronological: VocationalResult): VocationalResult {
+  if (!facts.birthDate || facts.age === null || !chronological.directed || chronological.outcome !== "not-disabled") {
+    return { ...chronological, borderline: null };
+  }
+  const window = borderlineWindow(facts.birthDate, facts.referenceDate, facts.age);
+  if (!window) return { ...chronological, borderline: null };
+  const higher = applyVocational(profileOf({ ...facts, age: window.higherAge }, facts.rfc.exertional, facts.rfc.fullRange));
+  if (!higher.directed || higher.outcome !== "disabled") return { ...chronological, borderline: null };
+  const note = ` Borderline age under POMS DI 25001.001: the person attains age ${window.higherAge} in ${window.daysUntil} days. A borderline issue exists when the person is a few days to a few months from the next higher age category, use of the higher category would direct disabled, and use of chronological age would direct not disabled. Rule ${chronological.ruleId} is the chronological result. Rule ${higher.ruleId} is the higher-age result. This bench does not move the category. The flag uses six months because the POMS states no fixed cutoff.`;
+  return {
+    ...chronological,
+    explanation: `${chronological.explanation}${note}`,
+    candidates: [...chronological.candidates, ...higher.candidates],
+    borderline: {
+      daysUntilHigherAge: window.daysUntil,
+      higherAge: window.higherAge,
+      higherRuleId: higher.ruleId,
+      chronologicalRuleId: chronological.ruleId,
+    },
+  };
 }
 
 function childEquivalence(facts: Facts): { met: boolean; detail: string } {
@@ -77,15 +125,6 @@ export function evaluateSequential(facts: Facts, listing: ListingResult): { sequ
       explanation: "The person is self-employed. Countable employee wages are not the test. 20 CFR 404.1575 uses the three tests or the countable-income test. This filing does not resolve those tests.",
     }));
     return { sequential: finish("not-determinable", 1, "Not determinable at step 1. Self-employment is tested under 20 CFR 404.1575, not by a wage amount alone.", steps), vocational: blankVocational() };
-  } else if (facts.workingNow && facts.unsuccessfulWorkAttempt) {
-    steps.push(step({
-      step: 1,
-      title: "Substantial gainful activity",
-      reached: true,
-      outcome: "continue",
-      citation: "20 CFR 404.1574(c)",
-      explanation: "The filing describes work of six months or less that stopped because of the impairment. 20 CFR 404.1574(c) treats a qualifying unsuccessful work attempt as not showing the ability to do substantial gainful activity.",
-    }));
   } else if (facts.workingNow) {
     if (facts.monthlyEarnings === null || facts.earningsYear === null) {
       steps.push(step({
@@ -150,13 +189,19 @@ export function evaluateSequential(facts: Facts, listing: ListingResult): { sequ
       explanation: `Monthly earnings of ${dollars(facts.monthlyEarnings)} are equal to or less than the ${facts.earningsYear} amount of ${dollars(threshold.amount)}. 20 CFR 404.1574(b)(3) says those earnings ordinarily show that the person has not engaged in substantial gainful activity. The evaluation continues. Earnings at or below SGA are not themselves a finding of disability.`,
     }));
   } else {
+    let explanation = "The filing says the person is not working. Step 1 does not direct a denial.";
+    if (facts.unsuccessfulWorkAttempt) {
+      explanation += " The filing also describes an unsuccessful work attempt and a break of at least 30 days. 20 CFR 404.1574(c) says that attempt does not show the ability to do substantial gainful activity. The person is not working now, so step 1 continues either way.";
+    } else if (facts.workAttemptDescribed) {
+      explanation += " The filing describes work of six months or less that stopped because of the impairment, but it does not state the significant break of at least 30 consecutive days that 20 CFR 404.1574(c) requires before that work is an unsuccessful work attempt. Step 1 still continues because the person is not working now.";
+    }
     steps.push(step({
       step: 1,
       title: "Substantial gainful activity",
       reached: true,
       outcome: "continue",
-      citation: "20 CFR 404.1520(b)",
-      explanation: "The filing says the person is not working. Step 1 does not direct a denial.",
+      citation: facts.unsuccessfulWorkAttempt || facts.workAttemptDescribed ? "20 CFR 404.1574(c)" : "20 CFR 404.1520(b)",
+      explanation,
     }));
   }
 
@@ -301,15 +346,20 @@ export function evaluateSequential(facts: Facts, listing: ListingResult): { sequ
       return { sequential: finish("not-disabled", 4, "Not disabled at step 4. The residual functional capacity covers past relevant work as actually performed. 20 CFR 404.1560(b).", steps), vocational: blankVocational() };
     }
   }
+  const recentSkilled = facts.work.filter((job) => job.withinFiveYears === true && !job.underThirtyDays && job.skill !== null);
+  const missingSga = recentSkilled.filter((job) => !job.sgaShown);
+  const noPrw = facts.confirmedPrw.length === 0
+    ? missingSga.length > 0
+      ? "A job is described within the five-year period, with a skill level, and it did not start and stop in fewer than 30 calendar days. The filing does not show that the job was substantial gainful activity. 20 CFR 404.1560(b)(1) defines past relevant work as work that was substantial gainful activity and that lasted long enough to learn. Step 4 does not find that the person can do that job. The evaluation goes to step 5. The five-year period here is measured from the filing date, or from today if no filing date was given, as a stand-in for the future determination date. This bench has no date last insured, so it does not shorten that period."
+      : "No job in the filing is established as past relevant work: work within the five-year period that was substantial gainful activity, that was stated as unskilled, semiskilled, or skilled, and that did not start and stop in fewer than 30 calendar days (20 CFR 404.1560(b)(1)). The evaluation goes to step 5. The five-year period here is measured from the filing date, or from today if no filing date was given, as a stand-in for the future determination date. This bench has no date last insured, so it does not shorten that period."
+    : "Past work as actually performed exceeds the residual functional capacity, or the demands were not stated. Work as generally performed in the national economy is not in this filing. 20 CFR 404.1520(h) allows the evaluation to go on to step 5.";
   steps.push(step({
     step: 4,
     title: "Past relevant work",
     reached: true,
     outcome: "continue",
-    citation: "20 CFR 404.1520(h)",
-    explanation: facts.confirmedPrw.length === 0
-      ? "No job in the filing is established as past relevant work: work within the five-year period that was stated as unskilled, semiskilled, or skilled, and that did not start and stop in fewer than 30 calendar days (SSR 24-2p; 20 CFR 404.1560(b)(1)). The evaluation goes to step 5. The five-year period here is measured from the filing date, or from today if no filing date was given, as a stand-in for the future determination date. If the date last insured is already past, the period ends on that date instead."
-      : "Past work as actually performed exceeds the residual functional capacity, or the demands were not stated. Work as generally performed in the national economy is not in this filing. 20 CFR 404.1520(h) allows the evaluation to go on to step 5.",
+    citation: missingSga.length > 0 && facts.confirmedPrw.length === 0 ? "20 CFR 404.1560(b)" : "20 CFR 404.1520(h)",
+    explanation: noPrw,
   }));
 
   const vocational = evaluateVocational(facts);
@@ -328,7 +378,7 @@ export function evaluateSequential(facts: Facts, listing: ListingResult): { sequ
 }
 
 function blankVocational(): VocationalResult {
-  return { directed: false, outcome: "not-determinable", ruleId: null, explanation: "The vocational rules were not reached.", citations: [], candidates: [] };
+  return { directed: false, outcome: "not-determinable", ruleId: null, explanation: "The vocational rules were not reached.", citations: [], candidates: [], borderline: null };
 }
 
 function medicalVocationalProfile(facts: Facts): { citation: string; explanation: string; headline: string } | null {
