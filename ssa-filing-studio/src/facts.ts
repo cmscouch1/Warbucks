@@ -92,7 +92,7 @@ function classify(text: string, carriedSource: string | null): {
   tags: string[];
 } {
   const tags: string[] = [];
-  if (/^(?:DOCUMENT\\s+|Title:|Type:|Source:|Document date:|Period:|Pages:|SSA exhibit:|Submission status:|Duplicate of:|FULL SOURCE TEXT|CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text.trim())) {
+  if (/^(?:DOCUMENT\\s+|Title:|Type:|Source:|Document date:|Period:|Pages:|SSA exhibit:|Submission status:|Duplicate of:|SOURCE PAGE|OCR confidence:|FULL SOURCE TEXT|CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text.trim())) {
     return { category: "unclassified", citation: "record-metadata", why: "Document-intake metadata is preserved for provenance but is not itself claimant or medical evidence.", tags };
   }
   if (/\b(years old|year-old|grade|high school|college|ged|worked as|job|employ(?:ed|ment)?|unemployed|earn(?:ing|ings|s)?|work(?:ing|ed)?)\b/i.test(text)) tags.push("vocational-fact");
