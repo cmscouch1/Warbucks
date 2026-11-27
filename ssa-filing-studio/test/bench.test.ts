@@ -8,9 +8,11 @@ import { runSelfTest } from "../src/selftest.js";
 import { joinSentences, splitSentences } from "../src/sentences.js";
 
 describe("sentence ledger", () => {
-  it("keeps every character, including Dr. and listing numbers", () => {
+  it("keeps every character and exact source offsets, including Dr. and listing numbers", () => {
     const text = "Dr. Cho discussed listing 12.04. She stopped.\n\nNext sentence!";
-    expect(joinSentences(splitSentences(text))).toBe(text);
+    const pieces = splitSentences(text);
+    expect(joinSentences(pieces)).toBe(text);
+    for (const piece of pieces) expect(text.slice(piece.startOffset, piece.endOffset)).toBe(piece.text);
   });
 });
 
