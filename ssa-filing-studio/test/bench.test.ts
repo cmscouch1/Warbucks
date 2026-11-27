@@ -42,7 +42,7 @@ describe("full-record provenance boundaries", () => {
     const { facts } = readFacts({
       narrative: [
         "DOCUMENT 1",
-        "Source: Dr. Jane Smith | Role: psychiatrist",
+        "Source: Paula Hays | Role: APN-C",
         "She opined that I cannot concentrate for more than 10 minutes.",
         "DOCUMENT 2",
         "Source: Elaine Summers | Role: mother",
@@ -52,7 +52,7 @@ describe("full-record provenance boundaries", () => {
     const opinion = facts.sentences.find((sentence) => sentence.text.startsWith("She opined"));
     const witness = facts.sentences.find((sentence) => sentence.text.startsWith("She observed"));
     expect(opinion?.category).toBe("medical-opinion");
-    expect(opinion?.sourceName).toContain("Dr. Jane Smith");
+    expect(opinion?.sourceName).toContain("Paula Hays");
     expect(witness?.category).toBe("nonmedical");
     expect(witness?.sourceName).toBeNull();
     expect(facts.sentences.filter((sentence) => sentence.citation === "record-metadata").length).toBeGreaterThan(0);
