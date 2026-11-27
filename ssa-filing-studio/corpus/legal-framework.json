@@ -1,0 +1,343 @@
+{
+  "schemaVersion": 1,
+  "title": "SSA disability law and policy coverage map",
+  "status": "CURATED_STARTER_NOT_EXHAUSTIVE",
+  "asOf": "2026-11-27",
+  "warning": "This is a coverage index, not a substitute for current official text. Applicability depends on program, filing date, adjudicative level, claim type, onset period, and facts. Before relying on an authority, retrieve and quote its current official text and verify effective dates, amendments, rescissions, and controlling circuit precedent.",
+  "hierarchy": [
+    "United States Code / Social Security Act",
+    "Code of Federal Regulations",
+    "Social Security Rulings",
+    "Binding federal appellate and Supreme Court precedent applicable to venue",
+    "SSA POMS and HALLEX operational policy (not statutes/regulations; distinguish legal weight)",
+    "Federal Register final rules and notices",
+    "Official SSA forms, instructions, and technical publications"
+  ],
+  "domains": [
+    {
+      "id": "statutory-definition",
+      "name": "Statutory disability definition and duration",
+      "authorities": [
+        {
+          "citation": "42 U.S.C. § 423(d)",
+          "url": "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title42-section423&num=0&edition=prelim"
+        },
+        {
+          "citation": "42 U.S.C. § 1382c(a)(3)",
+          "url": "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title42-section1382c&num=0&edition=prelim"
+        }
+      ]
+    },
+    {
+      "id": "title-ii-entitlement",
+      "name": "Title II insured status, disability-insured status, entitlement and DLI",
+      "authorities": [
+        {
+          "citation": "20 CFR Part 404, Subpart B",
+          "url": "https://www.ecfr.gov/current/title-20/chapter-III/part-404/subpart-B"
+        },
+        {
+          "citation": "20 CFR §§ 404.130–404.133",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.130"
+        }
+      ]
+    },
+    {
+      "id": "title-xvi-eligibility",
+      "name": "Title XVI eligibility and nonmedical requirements (separate from medical disability)",
+      "authorities": [
+        {
+          "citation": "20 CFR Part 416, Subpart B",
+          "url": "https://www.ecfr.gov/current/title-20/chapter-III/part-416/subpart-B"
+        },
+        {
+          "citation": "20 CFR §§ 416.202, 416.1100 et seq.",
+          "url": "https://www.ecfr.gov/current/title-20/section-416.202"
+        }
+      ]
+    },
+    {
+      "id": "filing-onset",
+      "name": "Application, protective filing, application date, onset, retroactivity and waiting period",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.603–404.614; 416.310–416.335",
+          "url": "https://www.ecfr.gov/current/title-20/chapter-III/part-404/subpart-G"
+        },
+        {
+          "citation": "SSR 18-1p",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR2018-01-di-01.html"
+        },
+        {
+          "citation": "POMS GN 00204.007",
+          "url": "https://secure.ssa.gov/poms.nsf/lnx/0200204007"
+        }
+      ]
+    },
+    {
+      "id": "sequential-evaluation",
+      "name": "Five-step adult sequential evaluation",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1520, 416.920",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1520"
+        },
+        {
+          "citation": "POMS DI 22001.001",
+          "url": "https://secure.ssa.gov/poms.NSF/lnx/0422001001"
+        }
+      ]
+    },
+    {
+      "id": "sgA-work",
+      "name": "SGA, earnings, subsidies, impairment-related work expenses, unsuccessful work attempts and self-employment",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1571–404.1576; 416.971–416.976",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1571"
+        },
+        {
+          "citation": "POMS DI 10505.000 et seq.",
+          "url": "https://secure.ssa.gov/poms.nsf/lnx/0410505000"
+        }
+      ]
+    },
+    {
+      "id": "mdI-evidence",
+      "name": "Medically determinable impairments, acceptable medical sources, evidence development and completeness",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1502–404.1519; 416.902–416.919",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1512"
+        },
+        {
+          "citation": "POMS DI 22501.001",
+          "url": "https://secure.ssa.gov/poms.Nsf/lnx/0422501001"
+        },
+        {
+          "citation": "POMS DI 24501.016",
+          "url": "https://secure.ssa.gov/poms.NSF/lnx/0424501016"
+        }
+      ]
+    },
+    {
+      "id": "medical-opinions",
+      "name": "Medical opinions and prior administrative medical findings; filing-date transition rules",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1520c, 404.1527, 416.920c, 416.927",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1520c"
+        },
+        {
+          "citation": "POMS DI 24503.025",
+          "url": "https://secure.ssa.gov/poms.nsf/lnx/0424503025"
+        },
+        {
+          "citation": "POMS DI 24503.030",
+          "url": "https://secure.ssa.gov/poms.nsf/lnx/0424503030"
+        },
+        {
+          "citation": "POMS DI 24503.050",
+          "url": "https://secure.ssa.gov/poms.NSF/lnx/0424503050"
+        }
+      ]
+    },
+    {
+      "id": "symptoms",
+      "name": "Symptoms, consistency, longitudinal evidence and treatment",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1529, 416.929",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1529"
+        },
+        {
+          "citation": "SSR 16-3p",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR2016-03-di-01.html"
+        },
+        {
+          "citation": "POMS DI 24501.021",
+          "url": "https://secure.ssa.gov/poms.nsf/lnx/0424501021"
+        }
+      ]
+    },
+    {
+      "id": "listings",
+      "name": "Listing of Impairments, medical equivalence and duration",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1525–404.1526; 416.925–416.926",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1525"
+        },
+        {
+          "citation": "20 CFR Part 404, Subpart P, Appendix 1",
+          "url": "https://www.ssa.gov/disability/professionals/bluebook/"
+        }
+      ]
+    },
+    {
+      "id": "mental-disorders",
+      "name": "Mental disorders, paragraph B/C, structured mental evaluation and functional criteria",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1520a, 416.920a",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1520a"
+        },
+        {
+          "citation": "20 CFR Part 404, Subpart P, Appendix 1, § 12.00",
+          "url": "https://www.ssa.gov/disability/professionals/bluebook/12.00-MentalDisorders-Adult.htm"
+        }
+      ]
+    },
+    {
+      "id": "rfc",
+      "name": "RFC, regular and continuing basis, function-by-function assessment and narrative rationale",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1545–404.1546; 416.945–416.946",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1545"
+        },
+        {
+          "citation": "SSR 96-8p",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR96-08-di-01.html"
+        }
+      ]
+    },
+    {
+      "id": "past-work",
+      "name": "Past relevant work, job demands, duration/lookback rules and ability to perform past work",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1560–404.1565; 416.960–416.965",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1560"
+        },
+        {
+          "citation": "POMS DI 25005.000",
+          "url": "https://secure.ssa.gov/poms.nsf/lnx/0425005000"
+        }
+      ]
+    },
+    {
+      "id": "step-five-vocational",
+      "name": "Other work, Medical-Vocational Guidelines, transferability and nonexertional erosion",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1566–404.1569a; 416.966–416.969a",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1566"
+        },
+        {
+          "citation": "20 CFR Part 404, Subpart P, Appendix 2",
+          "url": "https://www.ecfr.gov/current/title-20/chapter-III/part-404/appendix-Appendix%202%20to%20Subpart%20P%20of%20Part%20404"
+        },
+        {
+          "citation": "SSR 83-12; SSR 83-14; SSR 85-15; SSR 96-9p",
+          "url": "https://www.ssa.gov/OP_Home/rulings/rulfind1.html"
+        },
+        {
+          "citation": "POMS DI 25025.005",
+          "url": "https://secure.ssa.gov/apps10/poms.NSF/lnx/0425025005"
+        }
+      ]
+    },
+    {
+      "id": "consultative-exams",
+      "name": "Consultative examinations and duty to develop record",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1517–404.1519t; 416.917–416.919t",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1517"
+        },
+        {
+          "citation": "POMS DI 22510.000",
+          "url": "https://secure.ssa.gov/poms.nsf/lnx/0422510000"
+        }
+      ]
+    },
+    {
+      "id": "prior-decisions",
+      "name": "Prior determinations, administrative res judicata, reopening, changed circumstances and Chavez where applicable",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.987–404.996; 416.1487–416.1494",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.987"
+        },
+        {
+          "citation": "HALLEX I-2-4-40",
+          "url": "https://www.ssa.gov/OP_Home/hallex/I-02/I-2-4-40.html"
+        }
+      ]
+    },
+    {
+      "id": "appeals-hearings",
+      "name": "Initial determinations, reconsideration, ALJ hearing, Appeals Council, deadlines and evidence submission",
+      "authorities": [
+        {
+          "citation": "20 CFR Part 404, Subpart J and Subpart N; Part 416, Subparts I and N",
+          "url": "https://www.ecfr.gov/current/title-20/chapter-III/part-404/subpart-J"
+        },
+        {
+          "citation": "HALLEX",
+          "url": "https://www.ssa.gov/OP_Home/hallex/hallex.html"
+        }
+      ]
+    },
+    {
+      "id": "burden-standard",
+      "name": "Burden of proof, substantial evidence, decision articulation and judicial review",
+      "authorities": [
+        {
+          "citation": "42 U.S.C. § 405(g)",
+          "url": "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title42-section405&num=0&edition=prelim"
+        },
+        {
+          "citation": "42 U.S.C. § 1383(c)",
+          "url": "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title42-section1383&num=0&edition=prelim"
+        }
+      ]
+    },
+    {
+      "id": "failure-treatment",
+      "name": "Failure to follow prescribed treatment and good cause exceptions",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1530, 416.930",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1530"
+        },
+        {
+          "citation": "SSR 18-3p",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR2018-03-di-01.html"
+        }
+      ]
+    },
+    {
+      "id": "blindness",
+      "name": "Statutory blindness and distinct Title II/Title XVI rules",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1581–404.1585; 416.981–416.985",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1581"
+        }
+      ]
+    },
+    {
+      "id": "child-claims",
+      "name": "Childhood disability and age-18 redeterminations (conditional applicability)",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.350–404.368; 416.924–416.924b",
+          "url": "https://www.ecfr.gov/current/title-20/section-416.924"
+        }
+      ]
+    },
+    {
+      "id": "cdR",
+      "name": "Continuing disability reviews, medical improvement and cessation (conditional applicability)",
+      "authorities": [
+        {
+          "citation": "20 CFR §§ 404.1594; 416.994",
+          "url": "https://www.ecfr.gov/current/title-20/section-404.1594"
+        }
+      ]
+    }
+  ],
+  "requiredAudit": "For every domain, mark APPLICABLE, NOT APPLICABLE with fact-based reason, or UNRESOLVED. For each applicable authority retrieve current official text, record retrieval date/version/effective date, map every element to record evidence, identify conflicts and missing proof, and cite the exact provision. Do not label the corpus complete until every domain has a disposition and all applicable primary authorities have been loaded and tested."
+}
