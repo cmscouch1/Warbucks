@@ -90,7 +90,7 @@ Age-18 redeterminations are not applied. The notes that describe them cite POMS 
 
 ### Evidence provenance and case-frame safeguards
 
-The full-record intake now carries document ID, page number, original page label, OCR confidence, source name, and source role onto each sentence-level evidence item. These provenance fields are independent of evidence-category classification: a lay witness remains identified as a lay witness without being treated as a medical source. The flattened narrative is still an intermediate compatibility representation; it is not yet a durable, persistent evidence database.
+The full-record intake now carries document ID, page number, original page label, OCR confidence, source name, and source role onto each sentence-level evidence item. Each sentence also retains exact start/end character offsets into the intake narrative; the parser test verifies that slicing those offsets reproduces the exact trimmed sentence text. These provenance fields are independent of evidence-category classification: a lay witness remains identified as a lay witness without being treated as a medical source. The flattened narrative is still an intermediate compatibility representation; it is not yet a durable, persistent evidence database.
 
 The deterministic facts model no longer substitutes the computer's current date when both determination date and filing date are absent. In that situation it leaves the reference date unresolved, does not compute attained age from a birth date, does not infer elapsed duration from onset, and does not classify past work as within the five-year period. The opinion-rule regime and claim program also remain null when the filing date or program is unknown.
 
