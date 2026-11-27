@@ -29,6 +29,20 @@ Open http://localhost:8787. Paste a filing or use a sample, then choose **Weigh 
 
 If `npm run self-test` fails, the server answers `POST /api/grade` with 503 and does not return a grade.
 
+## Complete-record legal audit
+
+The MCP now exposes:
+- `ssa://legal-framework`: a structured statutory/regulatory/SSR/POMS/procedural coverage index. It is explicitly a curated starter, not an exhaustive or self-updating statement of SSA law.
+- `ssa://audit-protocol`: the mandatory recursive and reverse-recursive evidence-to-law and law-to-evidence audit protocol.
+- `recursive-full-record-audit`: a prompt for repeated legal, medical, functional, vocational, procedural, chronology, completeness, and adversarial review.
+- `grade_complete_record`: full-text document intake with provenance, dates, page counts, exhibit references, duplicates, and filing/receipt status.
+- `get_legal_framework`: returns the coverage map.
+- `validate_audit_closure`: checks reported closure gates, including two consecutive full passes with no new actionable flags, resolved legal-domain dispositions, verified remediation, and test results. It validates supplied attestations; it does not independently prove them.
+
+Supply the actual determination/hearing date separately from the filing date. Age and the past-relevant-work lookback are evaluated at the determination date when supplied. The filing date continues to select the applicable medical-opinion regime.
+
+**Important limitation:** the loaded deterministic corpus is not yet a complete SSA law library. It currently includes a limited set of eCFR sections, listings, grid rules, and POMS excerpts. The new coverage map identifies additional authority families that must be fetched, versioned, quoted, tested, and mapped before a claim-specific audit can be labeled legally complete. SSRs, HALLEX, full POMS coverage, venue-specific precedent, and all conditional program rules remain subject to further ingestion and verification.
+
 ## MCP
 
 The same engine is an MCP server on stdio. Logs go to stderr. Register it with the working directory set to `ssa-filing-studio`:
