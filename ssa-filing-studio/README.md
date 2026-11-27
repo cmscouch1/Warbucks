@@ -48,7 +48,7 @@ A model should use it in this order:
 
 1. `how_to_use`, or read the `ssa://guide` resource.
 2. `quote_authority` or `search_authorities` before stating what a rule says.
-3. `grade_filing` on the client's words. Lead with `sequential.outcome`. If `reliable` is false, show the audit and do not present the index as a grade.
+3. When source records exist, use `grade_complete_record` as the primary intake. Supply every relevant document's complete extracted text plus source/author, document type, dates/period, page count, exhibit reference, submission status, and duplicate relationships. Include the claimant narrative and complete procedural, work, and treatment chronologies. Do not replace source documents with summaries or omit duplicates. Use `grade_filing` only for narrative-only inputs. Lead with `sequential.outcome`. If `reliable` is false, show the audit and do not present the index as a grade. The full-record tool returns a document manifest and explicitly flags legal domains the current deterministic engine does not adjudicate.
 4. `weigh_sentences` when the question is what a single sentence is legally competent to prove.
 5. `get_listing`, `get_sga_amount`, `get_grid_rule`, `list_grid_rules`, and `apply_vocational_rule` for a specific authority or a hypothetical whose findings are already established.
 6. `draft_strongest_filing` for the reorganized filing and the blanks.
