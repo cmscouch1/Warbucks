@@ -29,6 +29,21 @@ Open http://localhost:8787. Paste a filing or use a sample, then choose **Weigh 
 
 If `npm run self-test` fails, the server answers `POST /api/grade` with 503 and does not return a grade.
 
+## Complete-record legal audit
+
+The MCP now exposes:
+- `ssa://legal-framework`: a structured statutory/regulatory/SSR/POMS/procedural coverage index. It is explicitly a curated starter, not an exhaustive or self-updating statement of SSA law.
+- `ssa://audit-protocol`: the mandatory recursive and reverse-recursive evidence-to-law and law-to-evidence audit protocol.
+- `recursive-full-record-audit`: a prompt for repeated legal, medical, functional, vocational, procedural, chronology, completeness, and adversarial review.
+- `grade_complete_record`: full-text and page-segmented document intake with provenance, original page labels, OCR quality, missing/duplicate page checks, exhibit references, duplicates, and filing/receipt status.
+- `get_legal_framework`: returns the coverage map.
+- `fetch_official_authority`: retrieves current source text from allowlisted official government domains (eCFR, SSA, U.S. Code, Federal Register, GovInfo, Third Circuit, and Supreme Court), recording the retrieval timestamp, final URL, and SHA-256. This supports live retrieval of authority not yet in the static corpus.
+- `validate_audit_closure`: checks reported closure gates, including two consecutive full passes with no new actionable flags, resolved legal-domain dispositions, verified remediation, and test results. It validates supplied attestations; it does not independently prove them.
+
+Supply the actual determination/hearing date separately from the filing date. Age and the past-relevant-work lookback are evaluated at the determination date when supplied. The filing date continues to select the applicable medical-opinion regime.
+
+**Important limitation:** the loaded deterministic corpus is not yet a complete SSA law library. It currently includes a limited set of eCFR sections, listings, grid rules, and POMS excerpts. The new coverage map identifies additional authority families that must be fetched, versioned, quoted, tested, and mapped before a claim-specific audit can be labeled legally complete. SSRs, HALLEX, full POMS coverage, venue-specific precedent, and all conditional program rules remain subject to further ingestion and verification.
+
 ## MCP
 
 The same engine is an MCP server on stdio. Logs go to stderr. Register it with the working directory set to `ssa-filing-studio`:
@@ -48,7 +63,7 @@ A model should use it in this order:
 
 1. `how_to_use`, or read the `ssa://guide` resource.
 2. `quote_authority` or `search_authorities` before stating what a rule says.
-3. `grade_filing` on the client's words. Lead with `sequential.outcome`. If `reliable` is false, show the audit and do not present the index as a grade.
+3. When source records exist, use `grade_complete_record` as the primary intake. Supply every relevant document's complete extracted text plus source/author, document type, dates/period, page count, exhibit reference, submission status, and duplicate relationships. Include the claimant narrative and complete procedural, work, and treatment chronologies. Do not replace source documents with summaries or omit duplicates. Use `grade_filing` only for narrative-only inputs. Lead with `sequential.outcome`. If `reliable` is false, show the audit and do not present the index as a grade. The full-record tool returns a document manifest and explicitly flags legal domains the current deterministic engine does not adjudicate.
 4. `weigh_sentences` when the question is what a single sentence is legally competent to prove.
 5. `get_listing`, `get_sga_amount`, `get_grid_rule`, `list_grid_rules`, and `apply_vocational_rule` for a specific authority or a hypothetical whose findings are already established.
 6. `draft_strongest_filing` for the reorganized filing and the blanks.
@@ -72,3 +87,11 @@ A birth date is used for age (attained the day before the birthday) and for a bo
 The five-year past-work period is measured from the filing date, or from today when no filing date is given. This bench has no date last insured and does not shorten that period.
 
 Age-18 redeterminations are not applied. The notes that describe them cite POMS DI 22001.001, and that section is not in this corpus. An adult listing is still tested for a child when no Part B listing is named.
+
+### Evidence provenance and case-frame safeguards
+
+The full-record intake now carries document ID, page number, original page label, OCR confidence, source name, and source role onto each sentence-level evidence item. Each sentence also retains exact start/end character offsets into the intake narrative; the parser test verifies that slicing those offsets reproduces the exact trimmed sentence text. These provenance fields are independent of evidence-category classification: a lay witness remains identified as a lay witness without being treated as a medical source. The flattened narrative is still an intermediate compatibility representation; it is not yet a durable, persistent evidence database.
+
+The deterministic facts model no longer substitutes the computer's current date when both determination date and filing date are absent. In that situation it leaves the reference date unresolved, does not compute attained age from a birth date, does not infer elapsed duration from onset, and does not classify past work as within the five-year period. The opinion-rule regime and claim program also remain null when the filing date or program is unknown.
+
+The grade_complete_record MCP intake preserves the supplied intake but withholds its deterministic grade until the primary program and operative filing date are supplied. A supplied date or program is not thereby verified; primary SSA records must establish the operative values. This is a safeguard against silent defaults, not a substitute for full insured-status, onset, or procedural analysis.

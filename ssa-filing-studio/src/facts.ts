@@ -17,7 +17,7 @@ const OBJECTIVE =
   /\b(mri|ct scan|cat scan|x-ray|xray|radiograph|emg|nerve conduction|eeg|ecg|ekg|spirometry|fev\s?1|a1c|hemoglobin a1c|ejection fraction|laboratory|blood test|biopsy|range of motion|straight[- ]leg|phq-9|gad-7|wais|wisc|full[- ]scale iq|mental status examination|on examination|imaging (?:showed|shows|revealed|demonstrated))\b/i;
 
 const MEDICAL_SOURCE =
-  /\b(dr\.?|doctor|physician|psychiatrist|psychologist|rheumatologist|neurologist|orthoped(?:ic|ist)|cardiologist|pulmonologist|oncologist|surgeon|nurse practitioner|\bnp\b|aprn|physician assistant|pa-c|podiatrist|optometrist|audiologist|pediatrician)\b/i;
+  /\b(dr\.?|doctor|physician|psychiatrist|psychologist|rheumatologist|neurologist|orthoped(?:ic|ist)|cardiologist|pulmonologist|oncologist|surgeon|nurse practitioner|\bnp\b|aprn|apn(?:-c)?|pmhnp|fnp|crnp|physician assistant|pa-c|podiatrist|optometrist|audiologist|pediatrician)\b/i;
 
 /** 20 CFR 404.1502(a) does not list these practitioners. "Dr." in front of the name does not make them an acceptable medical source. */
 const NOT_ACCEPTABLE_SOURCE =
@@ -74,6 +74,10 @@ function reservedHit(text: string): string | null {
 }
 
 function sourceName(text: string): string | null {
+  const sourceLine = /^Source:\s*(.+)$/i.exec(text.trim());
+  if (sourceLine?.[1] && (MEDICAL_SOURCE.test(sourceLine[1]) || NOT_ACCEPTABLE_SOURCE.test(sourceLine[1]))) {
+    return sourceLine[1].trim();
+  }
   const named = /\b(?:Dr\.?|Doctor)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/.exec(text);
   if (named) return `Dr. ${named[1]}`;
   const role = /\b(psychiatrist|psychologist|rheumatologist|neurologist|orthopedist|cardiologist|surgeon)\b/i.exec(text);
@@ -88,6 +92,9 @@ function classify(text: string, carriedSource: string | null): {
   tags: string[];
 } {
   const tags: string[] = [];
+  if (/^(?:DOCUMENT\s+|Title:|Type:|Source:|Document date:|Period:|Pages:|Page numbers supplied:|Expected page numbers:|SSA exhibit:|Submission status:|Duplicate of:|SOURCE PAGE|OCR confidence:|FULL SOURCE TEXT|CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text.trim())) {
+    return { category: "unclassified", citation: "record-metadata", why: "Document-intake metadata is preserved for provenance but is not itself claimant or medical evidence.", tags };
+  }
   if (/\b(years old|year-old|grade|high school|college|ged|worked as|job|employ(?:ed|ment)?|unemployed|earn(?:ing|ings|s)?|work(?:ing|ed)?)\b/i.test(text)) tags.push("vocational-fact");
   if (FUNCTION_WORD.test(text)) tags.push("function");
   if (OBJECTIVE.test(text)) tags.push("objective-language");
@@ -262,9 +269,48 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   const weighed: WeighedSentence[] = [];
   let carried: string | null = null;
   let carriedNonAms = false;
+  let currentDocumentId: string | null = null;
+  let currentPageNumber: number | null = null;
+  let currentSourcePageLabel: string | null = null;
+  let currentOcrConfidence: "high" | "medium" | "low" | "unreadable" | "not-applicable" | null = null;
+  let currentProvenanceSource: string | null = null;
+  let currentSourceRole: string | null = null;
   pieces.forEach((piece, index) => {
     const text = piece.text.trim();
     if (!text) return;
+    const intakeTextStart = piece.startOffset + piece.text.length - piece.text.trimStart().length;
+    const intakeTextEnd = intakeTextStart + text.length;
+    const documentMarker = /^DOCUMENT\s+(.+)$/i.exec(text);
+    if (documentMarker) {
+      currentDocumentId = documentMarker[1]?.trim() ?? null;
+      currentPageNumber = null;
+      currentSourcePageLabel = null;
+      currentOcrConfidence = null;
+      currentProvenanceSource = null;
+      currentSourceRole = null;
+      carried = null;
+      carriedNonAms = false;
+    } else if (/^(?:CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text)) {
+      currentDocumentId = null;
+      currentPageNumber = null;
+      currentProvenanceSource = null;
+      currentSourceRole = null;
+      carried = null;
+      carriedNonAms = false;
+    }
+    const pageMarker = /^SOURCE PAGE\s+(\d+)(?:\s*\|\s*Original label:\s*(.*))?/i.exec(text);
+    if (pageMarker?.[1]) {
+      currentPageNumber = Number(pageMarker[1]);
+      currentSourcePageLabel = pageMarker[2]?.trim() || null;
+      currentOcrConfidence = null;
+    }
+    const ocrMarker = /^OCR confidence:\s*(high|medium|low|unreadable|not-applicable)$/i.exec(text);
+    if (ocrMarker?.[1]) currentOcrConfidence = ocrMarker[1].toLowerCase() as NonNullable<typeof currentOcrConfidence>;
+    const provenanceMarker = /^Source:\s*(.*?)(?:\s*\|\s*Role:\s*(.*))?$/i.exec(text);
+    if (provenanceMarker) {
+      currentProvenanceSource = provenanceMarker[1]?.trim() || null;
+      currentSourceRole = provenanceMarker[2]?.trim() || null;
+    }
     const named = sourceName(text);
     if (named) {
       carried = named;
@@ -297,6 +343,8 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     }
     weighed.push({
       index,
+      intakeTextStart,
+      intakeTextEnd,
       text,
       category: classified.category,
       citation: classified.citation,
@@ -304,15 +352,16 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
       reservedIssue: reservedWhy !== null,
       reservedWhy,
       sourceName: usedSource,
+      provenance: { documentId: currentDocumentId, pageNumber: currentPageNumber, sourcePageLabel: currentSourcePageLabel, ocrConfidence: currentOcrConfidence, sourceName: currentProvenanceSource, sourceRole: currentSourceRole },
       tags: classified.tags,
       legallyIncompetentFor: incompetent,
     });
   });
 
   const filingDate = isoDate(input.filingDate);
-  const referenceDate = filingDate ?? new Date().toISOString().slice(0, 10);
+  const referenceDate = isoDate(input.determinationDate) ?? filingDate ?? "";
   const overrides: string[] = [];
-  const opinionRule = filingDate !== null && filingDate < "2017-03-27" ? "404.1527" : "404.1520c";
+  const opinionRule = filingDate === null ? null : filingDate < "2017-03-27" ? "404.1527" : "404.1520c";
 
   let age = input.age ?? null;
   if (input.age !== undefined) overrides.push("Age was taken from the structured field rather than the narrative.");
@@ -326,7 +375,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     }
   }
   let birthDate = isoDate(input.birthDate);
-  if (birthDate) {
+  if (birthDate && referenceDate) {
     const attained = ssaAge(birthDate, referenceDate);
     if (attained < 0 || attained > 120) {
       overrides.push("The birth date is not on or before the reference date, so it was not used as the age.");
@@ -394,13 +443,13 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   let earningsYear = input.earningsYear ?? (filingDate ? Number(filingDate.slice(0, 4)) : null);
   const yearInText = /\bin (20\d{2})\b/.exec(textAll);
   if (earningsYear === null && yearInText?.[1]) earningsYear = Number(yearInText[1]);
-  if (earningsYear === null && monthlyEarnings !== null) earningsYear = Number(referenceDate.slice(0, 4));
+  if (earningsYear === null && monthlyEarnings !== null && referenceDate) earningsYear = Number(referenceDate.slice(0, 4));
 
   const onset = isoDate(input.onsetDate);
   let yearsSinceOnset: number | null = null;
-  if (onset) yearsSinceOnset = yearsBetween(Number(onset.slice(0, 4)), referenceDate);
+  if (onset && referenceDate) yearsSinceOnset = yearsBetween(Number(onset.slice(0, 4)), referenceDate);
   const since = /\bsince (?:january |february |march |april |may |june |july |august |september |october |november |december )?(20\d{2})\b/i.exec(textAll);
-  if (yearsSinceOnset === null && since?.[1]) yearsSinceOnset = yearsBetween(Number(since[1]), referenceDate);
+  if (yearsSinceOnset === null && since?.[1] && referenceDate) yearsSinceOnset = yearsBetween(Number(since[1]), referenceDate);
 
   let duration: Facts["duration"] = "unknown";
   if (/\b(expected to result in death|terminal|end of life)\b/i.test(textAll)) duration = "met";
@@ -489,7 +538,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   ].filter((pattern) => pattern.test(textAll)).length;
 
   const pastWorkSgaShown = /\b(?:the |my |past |that )work was (?:substantial gainful activity|full[- ]time|sga)\b|\bworked full[- ]time\b|\bfull[- ]time (?:as|job|work)\b/i.test(textAll);
-  const work = readWork(weighed, referenceDate).map((job) => ({ ...job, sgaShown: job.sgaShown || pastWorkSgaShown }));
+  const work = readWork(weighed, referenceDate || null).map((job) => ({ ...job, sgaShown: job.sgaShown || pastWorkSgaShown }));
   const neverWorked = /\bnever worked\b|\bno (?:past )?(?:relevant )?work (?:experience|history)\b|\bno past relevant work\b/i.test(textAll);
   const confirmedPrw = work.filter((job) => job.withinFiveYears === true && !job.underThirtyDays && job.skill !== null && job.sgaShown);
   const experience = experienceOf(work, neverWorked, textAll);
@@ -514,6 +563,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     program: input.program ?? "title-ii",
     filingDate,
     referenceDate,
+    referenceDateKnown: referenceDate.length > 0,
     opinionRule,
     age,
     birthDate,
@@ -682,7 +732,7 @@ export function exertionalFromLimits(
   return { exertional: "unknown", fullRange: false, why: "The stated limits do not line up with a full exertional range in 20 CFR 404.1567." };
 }
 
-function readWork(sentences: WeighedSentence[], referenceDate: string): WorkFact[] {
+function readWork(sentences: WeighedSentence[], referenceDate: string | null): WorkFact[] {
   const jobs: WorkFact[] = [];
   for (const sentence of sentences) {
     const title = /\b(?:worked as|job as|work as|employed as|was an?)\s+(?:an?\s+)?([a-z][a-z ]{2,40}?)(?:\.|,| from| for| until)/i.exec(sentence.text);
@@ -697,8 +747,8 @@ function readWork(sentences: WeighedSentence[], referenceDate: string): WorkFact
       calendarDays = Number(daySpan[1]);
       underThirty = calendarDays < 30;
     }
-    const refYear = Number(referenceDate.slice(0, 4));
-    const withinFiveYears = end ? refYear - Number(end) <= 5 && refYear - Number(end) >= 0 : null;
+    const refYear = referenceDate ? Number(referenceDate.slice(0, 4)) : null;
+    const withinFiveYears = end && refYear !== null ? refYear - Number(end) <= 5 && refYear - Number(end) >= 0 : null;
     const lift = /(\d+)\s*pounds?/i.exec(sentence.text);
     let skill: WorkFact["skill"] = null;
     if (/\bunskilled\b|\bsvp\s*[12]\b/i.test(sentence.text)) skill = "unskilled";

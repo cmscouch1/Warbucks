@@ -30,6 +30,8 @@ export interface FilingInput {
   narrative: string;
   program?: Program;
   filingDate?: string;
+  /** Date of determination/hearing used for attained age and the five-year past-work window. */
+  determinationDate?: string;
   age?: number;
   birthDate?: string;
   education?: Education;
@@ -44,6 +46,9 @@ export interface FilingInput {
 
 export interface WeighedSentence {
   index: number;
+  /** Character offsets in the exact intake narrative passed to the parser; end is exclusive. */
+  intakeTextStart: number;
+  intakeTextEnd: number;
   text: string;
   category: EvidenceCategory;
   citation: string;
@@ -51,6 +56,7 @@ export interface WeighedSentence {
   reservedIssue: boolean;
   reservedWhy: string | null;
   sourceName: string | null;
+  provenance: { documentId: string | null; pageNumber: number | null; sourcePageLabel: string | null; ocrConfidence: "high" | "medium" | "low" | "unreadable" | "not-applicable" | null; sourceName: string | null; sourceRole: string | null };
   tags: string[];
   legallyIncompetentFor: string[];
 }
@@ -100,10 +106,11 @@ export type SymptomKey =
 
 export interface Facts {
   sentences: WeighedSentence[];
-  program: Program;
+  program: Program | null;
   filingDate: string | null;
   referenceDate: string;
-  opinionRule: OpinionRule;
+  referenceDateKnown: boolean;
+  opinionRule: OpinionRule | null;
   age: number | null;
   birthDate: string | null;
   education: Education | null;

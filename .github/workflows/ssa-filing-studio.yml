@@ -1,0 +1,36 @@
+name: SSA Filing Studio
+on:
+  pull_request:
+    paths:
+      - "ssa-filing-studio/**"
+      - ".github/workflows/ssa-filing-studio.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ssa-filing-studio/**"
+      - ".github/workflows/ssa-filing-studio.yml"
+permissions:
+  contents: read
+concurrency:
+  group: ssa-filing-studio-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ssa-filing-studio
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ssa-filing-studio/package-lock.json
+      - run: npm ci
+      - name: Strict TypeScript check
+        run: npm run typecheck
+      - name: Unit and contract tests
+        run: npm test
+      - name: Deterministic bench self-test
+        run: npm run self-test

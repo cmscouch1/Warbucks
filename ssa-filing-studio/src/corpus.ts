@@ -55,6 +55,7 @@ interface Corpus {
   listings: ListingRecord[];
   poms: PomsRecord[];
   sga: { rule: string; amounts: SgaAmount[] };
+  legalFramework: Record<string, unknown>;
 }
 
 let cached: Corpus | null = null;
@@ -76,6 +77,7 @@ export function corpus(): Corpus {
     listings: readJson<ListingRecord[]>("listings.json"),
     poms: readJson<PomsRecord[]>("poms.json"),
     sga: readJson("sga.json"),
+    legalFramework: readJson<Record<string, unknown>>("legal-framework.json"),
   };
   return cached;
 }
@@ -255,3 +257,7 @@ export function authorityContains(citation: string, phrase: string): boolean {
 
 export const BENCH_NOTICE =
   "SSA does not grade a filing from 1 to 100 and does not weigh individual sentences by a published percentage. filingStrength is this bench's index of whether the submission contains the facts the regulations require an adjudicator to consider. sequential.outcome is what those rules do with the facts this filing actually establishes. A statement that the person is disabled, or a bare exertional label such as 'sedentary,' is inherently neither valuable nor persuasive on a claim filed on or after March 27, 2017 (20 CFR 404.1520b(c)(3)). Do not add a medical fact the record does not contain.";
+
+export function legalFramework(): Record<string, unknown> {
+  return corpus().legalFramework;
+}

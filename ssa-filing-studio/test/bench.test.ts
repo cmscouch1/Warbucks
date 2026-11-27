@@ -2,14 +2,17 @@ import { describe, expect, it } from "vitest";
 import { compareFilings, quoteForModel, sgaForModel, vocationalForModel } from "../src/bench-api.js";
 import { quoteAuthority } from "../src/corpus.js";
 import { gradeFiling } from "../src/grade.js";
+import { readFacts } from "../src/facts.js";
 import { createMcpServer } from "../src/mcp.js";
 import { runSelfTest } from "../src/selftest.js";
 import { joinSentences, splitSentences } from "../src/sentences.js";
 
 describe("sentence ledger", () => {
-  it("keeps every character, including Dr. and listing numbers", () => {
+  it("keeps every character and exact source offsets, including Dr. and listing numbers", () => {
     const text = "Dr. Cho discussed listing 12.04. She stopped.\n\nNext sentence!";
-    expect(joinSentences(splitSentences(text))).toBe(text);
+    const pieces = splitSentences(text);
+    expect(joinSentences(pieces)).toBe(text);
+    for (const piece of pieces) expect(text.slice(piece.startOffset, piece.endOffset)).toBe(piece.text);
   });
 });
 
@@ -33,6 +36,61 @@ describe("bench", () => {
     });
     expect(report.vocational.directed).toBe(false);
     expect(report.sequential.outcome).not.toBe("disabled");
+  });
+});
+
+describe("unknown case-frame dates", () => {
+  it("does not use the computer's current date to infer age, duration, or the filing-date opinion regime", () => {
+    const { facts } = readFacts({
+      narrative: "I was born on January 1, 1980. I stopped working in 2020. I worked as a cashier from 2015 to 2020.",
+    });
+    expect(facts.program).toBeNull();
+    expect(facts.referenceDateKnown).toBe(false);
+    expect(facts.referenceDate).toBe("");
+    expect(facts.age).toBeNull();
+    expect(facts.opinionRule).toBeNull();
+    expect(facts.work[0]?.withinFiveYears).toBeNull();
+  });
+});
+
+describe("determination-date controls", () => {
+  it("uses the adjudication date rather than the filing date for age and past-work timing", () => {
+    const { facts } = readFacts({
+      narrative: "I was born on January 1, 1980.",
+      filingDate: "2025-01-01",
+      determinationDate: "2026-01-01",
+      birthDate: "1980-01-01",
+    });
+    expect(facts.referenceDate).toBe("2026-01-01");
+    expect(facts.age).toBe(46);
+  });
+});
+
+describe("full-record provenance boundaries", () => {
+  it("does not leak a medical source attribution into a later lay-witness document", () => {
+    const narrative = [
+      "DOCUMENT 1",
+        "Source: Paula Hays | Role: APN-C",
+        "SOURCE PAGE 7 | Original label: 7",
+        "OCR confidence: high",
+        "She opined that I cannot concentrate for more than 10 minutes.",
+        "DOCUMENT 2",
+        "Source: Elaine Summers | Role: mother",
+        "SOURCE PAGE 3 | Original label: 3",
+      "OCR confidence: medium",
+      "She observed that I avoid stores because I panic.",
+    ].join("\n");
+    const { facts } = readFacts({ narrative });
+    const opinion = facts.sentences.find((sentence) => sentence.text.startsWith("She opined"));
+    const witness = facts.sentences.find((sentence) => sentence.text.startsWith("She observed"));
+    expect(opinion?.category).toBe("medical-opinion");
+    expect(opinion?.sourceName).toContain("Paula Hays");
+    expect(witness?.category).toBe("nonmedical");
+    expect(witness?.sourceName).toBeNull();
+    expect(opinion?.provenance).toEqual({ documentId: "1", pageNumber: 7, sourcePageLabel: "7", ocrConfidence: "high", sourceName: "Paula Hays", sourceRole: "APN-C" });
+    expect(narrative.slice(opinion!.intakeTextStart, opinion!.intakeTextEnd)).toBe(opinion!.text);
+    expect(witness?.provenance).toEqual({ documentId: "2", pageNumber: 3, sourcePageLabel: "3", ocrConfidence: "medium", sourceName: "Elaine Summers", sourceRole: "mother" });
+    expect(facts.sentences.filter((sentence) => sentence.citation === "record-metadata").length).toBeGreaterThan(0);
   });
 });
 

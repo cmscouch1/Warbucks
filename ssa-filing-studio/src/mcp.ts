@@ -1,6 +1,7 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
@@ -19,17 +20,40 @@ import {
   vocationalForModel,
   weighSentences,
 } from "./bench-api.js";
-import { BENCH_NOTICE, searchAuthorities } from "./corpus.js";
+import { BENCH_NOTICE, legalFramework, searchAuthorities } from "./corpus.js";
 import { novelNumbers } from "./draft.js";
 import type { FilingInput } from "./types.js";
 
-const SERVER_INSTRUCTIONS = `Deterministic SSA disability filing bench. filingStrength is not an SSA score. sequential.outcome is what the regulations do with facts the text establishes. Never invent a diagnosis, test, measurement, date, job, or limitation. Before stating a rule, call quote_authority. Before keeping a rewrite, call compare_filings and discard it when novelNumbers or inventedClinicalMarkers is not empty. Do not tell a client they will be approved. If reliable is false, show the audit and do not present the number as a grade. Read ssa://guide.`;
+const SSA_AUDIT_PROTOCOL = `MANDATORY ITERATIVE AUDIT PROTOCOL — DO NOT STOP AFTER ONE PASS.
+
+A. Establish the governing case frame. Determine Title II, Title XVI, concurrent, child/adult, initial/appeal/continuing-review status; filing and protective-filing dates; alleged onset; DLI/insured status; adjudication period; prior determinations; age category at the legally relevant date; venue/circuit; and which filing-date evidence rules apply. Keep claimed, alleged, verified, and unresolved facts distinct.
+
+B. Load ssa://legal-framework and ssa://authorities. For EVERY legal domain, assign APPLICABLE, NOT APPLICABLE (with fact-specific reason), or UNRESOLVED. Identify controlling statutes, current CFR provisions, SSRs, applicable precedent, and relevant POMS/HALLEX instructions. Distinguish binding law from agency operating guidance. Retrieve and quote current official text through quote_authority/search_authorities when loaded; if absent, flag CORPUS GAP and call fetch_official_authority with a verified official URL. Record citation, official URL, effective date/version, retrieval date, scope, elements, and supersession status. Check the SSA ruling index for current and rescinded/superseded rulings, and check acquiescence rulings and venue-specific circuit precedent. Never claim all SSA law is loaded from a curated index.
+
+C. Evidence-first intake. Call grade_complete_record with all relevant source documents in full text, not summaries. Preserve page-level provenance, OCR confidence/illegibility, source/author credentials, creation date versus event date, period covered, exhibit/page identifiers, submission/receipt/consideration status, duplicates, attachments, and missing pages. Distinguish original source records from AI summaries, drafts, claimant recollections, and agency-generated records.
+
+D. Forward audit (law to record): for every element of every applicable authority, identify supporting evidence, contrary evidence, missing evidence, temporal relevance, source competence, and exact page/paragraph. Trace statute -> regulation -> SSR/precedent -> POMS/HALLEX -> required finding -> record support -> requested conclusion. Check all five sequential steps, MDI/severity/combination/duration/listings/equivalence, paragraph B/C where relevant, symptoms, medical opinions under the correct filing-date regime, prior administrative findings, RFC function-by-function and regular/continuing basis, PRW and current five-year rules, step-five burden/vocational evidence/grid erosion/transferability, SGA/work incentives, onset/DLI, insured status, Title XVI nonmedical eligibility, and appeals/procedural rules as applicable.
+
+E. Reverse audit (record to law): start with EVERY document, page, material fact, diagnosis, finding, symptom, opinion, work fact, third-party observation, procedural event, and contradiction. Identify which legal element it bears on, what time period it affects, what other evidence corroborates or conflicts, and whether it changes any step, RFC restriction, onset, credibility/consistency analysis, vocational conclusion, or procedural right. No source may be discarded as irrelevant without a reason. Do not let a document's presence imply filing, receipt, or exhibit consideration.
+
+F. Independent adversarial passes: (1) medical/evidentiary; (2) mental and physical functional; (3) vocational/SGA; (4) procedural/insured-status/program; (5) chronology and temporal consistency; (6) legal authority/citation; (7) document integrity/completeness; (8) claimant narrative and third-party corroboration; (9) counterargument/red-team; (10) remedy and filing-readiness. Then reconcile findings without averaging away conflicts.
+
+G. Flag ledger: each flag gets stable ID, severity, domain, exact source/page, governing authority, defect, consequence, confidence, whether actionable, and a concrete remedy. Classify VERIFIED, UNRESOLVED, BLOCKED, NOT APPLICABLE, or REMEDIED — REQUIRES RECHECK. Never mark remedied merely because text was edited.
+
+H. Remediation: fix the source mapping, missing authority, extraction, chronology, legal analysis, evidence linkage, citation, document structure, or draft defect. Never invent evidence or facts. Preserve original wording and source; keep proposed edits traceable. For every proposed rewrite, call compare_filings and reject unsupported novel numbers/clinical markers; also compare meaning, omissions, chronology, and qualifiers because number/marker detection alone is not sufficient.
+
+I. Repeat the entire forward and reverse audit after each material remediation. Re-open affected source pages and authority text; do not rely on prior summaries. Add newly discovered flags, close only with a reasoned verification record, and continue until two consecutive full passes produce no new actionable flags and every prior actionable flag is VERIFIED REMEDIED or explicitly BLOCKED with an owner/reason. Any unresolved legal authority, missing material record, unverified filing/receipt claim, unexplained contradiction, untested code change, or unsupported conclusion prevents a clean completion status.
+
+J. Deliver an audit report with pass count, coverage denominator and dispositions, source/page traceability, authority/version ledger, flag ledger, remediation diff, tests actually run and results, residual limitations, and exact readiness status. Never equate zero detected flags with completeness unless the audit coverage itself is verified. Do not promise approval or describe an internal index as an SSA score.`;
+
+const SERVER_INSTRUCTIONS = `Deterministic SSA disability filing bench. filingStrength is not an SSA score. sequential.outcome is what the regulations do with facts the text establishes. Never invent a diagnosis, test, measurement, date, job, or limitation. When source documents are available, use grade_complete_record and provide every relevant document in full text with provenance and procedural/work/treatment chronologies; do not reduce the record to a narrative summary. Use grade_filing only for a genuinely narrative-only review. Before stating a rule, call quote_authority. Before keeping a rewrite, call compare_filings and discard it when novelNumbers or inventedClinicalMarkers is not empty. Do not tell a client they will be approved. If reliable is false, show the audit and do not present the number as a grade. Explicitly flag Title II insured-status/DLI, protective-filing, prior-decision, and concurrent-program issues because the current deterministic engine does not adjudicate them. Read ssa://guide, ssa://legal-framework, and ssa://audit-protocol. Use fetch_official_authority to retrieve any relevant current official source not in the static corpus. For complete records, use the recursive-full-record-audit prompt and repeat forward/reverse audits after remediation.`;
 
 function filingShape(narrative: string) {
   return {
     narrative: z.string().min(1).describe(narrative),
     program: z.enum(["title-ii", "title-xvi"]).optional().describe("title-ii is SSDI. title-xvi is SSI. Earnings do not deny at step 1 for Title XVI statutory blindness (20 CFR 416.984)."),
     filingDate: z.string().optional().describe("YYYY-MM-DD. A date before 2017-03-27 selects 20 CFR 404.1527. Omitting it selects 20 CFR 404.1520c, and the report says so."),
+    determinationDate: z.string().optional().describe("YYYY-MM-DD date of determination/hearing. Used for attained age and the five-year past-relevant-work window; do not substitute the application date."),
     age: z.number().int().optional().describe("Use only when the record states the age. Do not estimate."),
     birthDate: z.string().optional().describe("YYYY-MM-DD from the record. Used to compute SSA age (attained the day before the birthday) and to flag a borderline age when POMS DI 25001.001's three conditions are met. The chronological category is not moved."),
     education: z.enum(["illiterate", "marginal", "limited", "high-school-or-more"]).optional().describe("illiterate means cannot read or write a simple message. marginal is 6th grade or less. limited is 7th through 11th."),
@@ -46,6 +70,7 @@ function toFiling(args: {
   narrative: string;
   program?: "title-ii" | "title-xvi";
   filingDate?: string;
+  determinationDate?: string;
   age?: number;
   birthDate?: string;
   education?: "illiterate" | "marginal" | "limited" | "high-school-or-more";
@@ -68,16 +93,90 @@ function failure(error: unknown) {
   return { isError: true as const, content: [{ type: "text" as const, text: message }] };
 }
 
+const OFFICIAL_AUTHORITY_HOSTS = new Set([
+  "www.ecfr.gov", "ecfr.gov", "www.ssa.gov", "ssa.gov", "secure.ssa.gov",
+  "uscode.house.gov", "www.govinfo.gov", "www.federalregister.gov",
+  "federalregister.gov", "www.ca3.uscourts.gov", "ca3.uscourts.gov",
+  "www.supremecourt.gov",
+]);
+
+function extractAuthorityText(source: string, contentType: string): string {
+  if (/json/i.test(contentType)) {
+    try { return JSON.stringify(JSON.parse(source), null, 2); } catch { return source; }
+  }
+  let value = source
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<\/(?:p|div|section|article|h[1-6]|li|tr|table|title)>/gi, "\n")
+    .replace(/<br\s*\/?\s*>/gi, "\n")
+    .replace(/<[^>]+>/g, " ");
+  value = value.replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'");
+  value = value.replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => String.fromCodePoint(parseInt(n, 16)));
+  return value.split(/\r?\n/).map((line) => line.replace(/\s+/g, " ").trim()).filter(Boolean).join("\n");
+}
+
+async function fetchOfficialAuthority(urlText: string) {
+  let url: URL;
+  try { url = new URL(urlText); } catch { throw new Error("Provide a valid official authority URL."); }
+  if (url.protocol !== "https:" || (url.port !== "" && url.port !== "443") || url.username || url.password || !OFFICIAL_AUTHORITY_HOSTS.has(url.hostname.toLowerCase())) {
+    throw new Error("Only HTTPS URLs on the allowlisted official government authority domains are permitted.");
+  }
+  let response: Response | null = null;
+  let current = url;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    response = await fetch(current, {
+      redirect: "manual",
+      headers: { "User-Agent": "SSA-Filing-Bench/1.1 (official authority retrieval)", "Accept": "text/html,application/xml,text/xml,application/json,*/*" },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) throw new Error("Official source returned a redirect without a location.");
+      const next = new URL(location, current);
+      if (next.protocol !== "https:" || !OFFICIAL_AUTHORITY_HOSTS.has(next.hostname.toLowerCase())) {
+        throw new Error("Official source redirected outside the allowlisted government domains; retrieval stopped.");
+      }
+      current = next;
+      continue;
+    }
+    break;
+  }
+  if (!response || response.status >= 300) throw new Error("Too many redirects while retrieving the official authority.");
+  if (!response.ok) throw new Error("Official authority request failed with HTTP " + response.status + ".");
+  const contentType = response.headers.get("content-type") ?? "unknown";
+  const raw = await response.text();
+  const text = extractAuthorityText(raw, contentType);
+  return {
+    requestedUrl: url.href,
+    finalUrl: current.href,
+    retrievedAt: new Date().toISOString(),
+    httpStatus: response.status,
+    contentType,
+    sourceSha256: createHash("sha256").update(raw, "utf8").digest("hex"),
+    characterCount: text.length,
+    text,
+    limitation: "Retrieved official source content is not itself a legal conclusion. Verify effective date, amendment/supersession status, applicability, and controlling precedent before applying it.",
+  };
+}
+
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
 
 export function createMcpServer(): McpServer {
   const server = new McpServer(
-    { name: "ssa-filing-bench", version: "1.0.0" },
+    { name: "ssa-filing-bench", version: "1.1.0" },
     { instructions: SERVER_INSTRUCTIONS },
   );
 
   server.registerResource("guide", "ssa://guide", { description: "Operating rules for using this bench. Read this before grading or rewriting a filing.", mimeType: "text/plain" }, async (uri) => ({
     contents: [{ uri: uri.href, mimeType: "text/plain", text: MODEL_GUIDE }],
+  }));
+  server.registerResource("legal-framework", "ssa://legal-framework", { description: "Structured SSA statutory, regulatory, ruling, POMS, procedural, and conditional-applicability coverage map. Curated starter; not exhaustive.", mimeType: "application/json" }, async (uri) => ({
+    contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(legalFramework(), null, 2) }],
+  }));
+  server.registerResource("audit-protocol", "ssa://audit-protocol", { description: "Mandatory recursive and reverse-recursive SSA audit protocol with iterative remediation and evidence-based stopping conditions.", mimeType: "text/markdown" }, async (uri) => ({
+    contents: [{ uri: uri.href, mimeType: "text/markdown", text: SSA_AUDIT_PROTOCOL }],
   }));
   server.registerResource("notice", "ssa://notice", { description: "The honesty notice that accompanies every grade.", mimeType: "text/plain" }, async (uri) => ({
     contents: [{ uri: uri.href, mimeType: "text/plain", text: BENCH_NOTICE }],
@@ -142,6 +241,28 @@ export function createMcpServer(): McpServer {
   );
 
   server.registerPrompt(
+    "recursive-full-record-audit",
+    {
+      title: "Recursive full-record SSA audit",
+      description: "Run a multi-pass, recursive and reverse-recursive audit of the complete SSA record against applicable law, then remediate and repeat until a defensible no-new-flags stopping condition is reached.",
+      argsSchema: {
+        caseProfile: z.string().describe("Program, claim type, filing/protective-filing dates, alleged onset, DLI, adjudicative level, prior decisions, age, education, work background, and venue/circuit when known."),
+        recordManifest: z.string().describe("Complete document inventory with stable IDs, source/author, date/period, page count, page coverage, exhibit, submission/receipt status, and duplicate links."),
+        knownIssues: z.string().optional().describe("Known disputes, gaps, contradictions, prior findings, or issues to preserve."),
+      },
+    },
+    ({ caseProfile, recordManifest, knownIssues }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: SSA_AUDIT_PROTOCOL + "\n\nCASE PROFILE:\n" + caseProfile + "\n\nRECORD MANIFEST:\n" + recordManifest + "\n\nKNOWN ISSUES:\n" + (knownIssues ?? "None supplied; independently identify issues."),
+        },
+      }],
+    }),
+  );
+
+  server.registerPrompt(
     "explain-rule",
     {
       title: "Explain one authority",
@@ -179,6 +300,175 @@ export function createMcpServer(): McpServer {
     }
   });
 
+  server.registerTool("grade_complete_record", {
+    title: "Grade a complete SSA evidence record",
+    description: "Primary full-record intake for an SSA filing review. Supply the claimant narrative AND every relevant document in full text, preferably segmented page-by-page with original page labels and OCR quality, plus source, author/role, dates, page count, exhibit reference, and submission status. Include prior decisions, medical records, opinion evidence, treatment chronology, work history, function reports, third-party statements, and procedural records. The tool preserves a document manifest and passes the complete text to the existing deterministic evaluator only after the primary program and current filing date are established. If either is missing, it returns the complete intake manifest but withholds the deterministic grade rather than silently assuming Title II or the post-2017 medical-opinion rules. IMPORTANT: the current deterministic engine does not independently adjudicate Title II insured status/DLI, protective-filing disputes, prior-decision effect, or concurrent Title II/Title XVI eligibility; it flags those as agent-review issues rather than silently treating them as resolved. Never omit a document because it appears duplicative; identify duplicates in metadata and let the reviewing agent assess materiality.",
+    inputSchema: {
+      claimantNarrative: z.string().optional().describe("Claimant's own complete narrative, verbatim. Do not summarize away details."),
+      determinationDate: z.string().optional().describe("Date of the adjudicative determination/hearing. Used for age and past-work timing; distinct from protective filing and application dates."),
+      documents: z.array(z.object({
+        documentId: z.string().min(1).describe("Stable unique identifier for this record item."),
+        title: z.string().min(1).describe("Document title or descriptive label."),
+        documentType: z.string().min(1).describe("For example: treatment note, psychiatric evaluation, medical opinion, ALJ decision, Appeals Council notice, function report, third-party statement, earnings record, work history, or correspondence."),
+        sourceName: z.string().optional().describe("Provider, agency, witness, employer, or originating institution."),
+        sourceRole: z.string().optional().describe("Author's role/credentials or relationship to claimant; do not infer credentials."),
+        documentDate: z.string().optional().describe("Document creation/signature date, if known."),
+        periodStart: z.string().optional().describe("Beginning of the period described by the document."),
+        periodEnd: z.string().optional().describe("End of the period described by the document."),
+        pageCount: z.number().int().nonnegative().optional(),
+        pages: z.array(z.object({
+          pageNumber: z.number().int().positive(),
+          sourcePageLabel: z.string().optional(),
+          ocrConfidence: z.enum(["high", "medium", "low", "unreadable", "not-applicable"]).optional(),
+          text: z.string().min(1),
+        })).optional().describe("Preferred page-level source text. Preserve page order, original page labels, and OCR quality; do not silently omit blank, missing, or illegible pages."),
+        expectedPageNumbers: z.array(z.number().int().positive()).optional().describe("Known expected page numbers, including pages missing from the supplied scan/extract."),
+        exhibitReference: z.string().optional().describe("SSA exhibit/page reference, if assigned."),
+        submissionStatus: z.enum(["submitted", "uploaded", "served", "in-record", "not-submitted", "unknown"]).optional(),
+        duplicateOf: z.string().optional().describe("Another documentId if this is a duplicate; retain it rather than silently dropping it."),
+        fullText: z.string().optional().describe("Fallback complete extracted/OCR text when page-level pages are not supplied. Do not replace with an AI summary."),
+      }).refine((doc) => Boolean(doc.fullText) || Boolean(doc.pages?.length), { message: "Provide complete fullText or at least one page-level page." })).min(1).describe("All relevant source documents, not merely selected excerpts."),
+      proceduralHistory: z.string().optional().describe("Complete procedural chronology, including applications, protective filing dates, determinations, hearings, decisions, appeals, notices, and receipt status."),
+      workHistory: z.string().optional().describe("Complete work chronology with employers, duties, dates, hours, earnings, accommodations, subsidies, unsuccessful work attempts, and job demands when known."),
+      treatmentChronology: z.string().optional().describe("Longitudinal treatment chronology, including providers, encounters, diagnoses, findings, medication changes, response, adverse effects, gaps, referrals, and attempted contacts."),
+      dateLastInsured: z.string().optional().describe("Title II date last insured, if established by an SSA earnings/insured-status record. Do not infer it."),
+      protectiveFilingDate: z.string().optional().describe("Protective filing date, kept distinct from application completion/submission/receipt dates."),
+      actualFilingDate: z.string().optional().describe("Actual application submission/filing date, if verified."),
+      priorDecisionDate: z.string().optional().describe("Date of any prior SSA decision."),
+      program: z.enum(["title-ii", "title-xvi"]).optional(),
+      concurrentPrograms: z.boolean().optional().describe("True when both Title II and Title XVI are being pursued. The engine does not determine separate nonmedical entitlement requirements."),
+      filingDate: z.string().optional().describe("Date used for the current application/rule selection only when established."),
+      age: z.number().int().optional(),
+      birthDate: z.string().optional(),
+      education: z.enum(["illiterate", "marginal", "limited", "high-school-or-more"]).optional(),
+      directEntryToSkilledWork: z.boolean().optional(),
+      monthlyEarnings: z.number().optional(),
+      earningsYear: z.number().int().optional(),
+      selfEmployed: z.boolean().optional(),
+      statutoryBlindness: z.boolean().optional(),
+      onsetDate: z.string().optional(),
+    },
+    annotations: readOnly,
+  }, async (args) => {
+    try {
+      const sections: string[] = [];
+      if (args.claimantNarrative) sections.push("CLAIMANT NARRATIVE (verbatim):\n" + args.claimantNarrative);
+      if (args.proceduralHistory) sections.push("PROCEDURAL HISTORY (source supplied; dates/status must be verified):\n" + args.proceduralHistory);
+      if (args.workHistory) sections.push("WORK HISTORY (source supplied; do not infer SGA or PRW from job title alone):\n" + args.workHistory);
+      if (args.treatmentChronology) sections.push("TREATMENT CHRONOLOGY (source supplied; preserve longitudinal sequence):\n" + args.treatmentChronology);
+      for (const doc of args.documents) {
+        const metadata = [
+          "DOCUMENT " + doc.documentId,
+          "Title: " + doc.title,
+          "Type: " + doc.documentType,
+          "Source: " + (doc.sourceName ?? "not supplied") + " | Role: " + (doc.sourceRole ?? "not supplied"),
+          "Document date: " + (doc.documentDate ?? "not supplied"),
+          "Period: " + (doc.periodStart ?? "unknown") + " through " + (doc.periodEnd ?? "unknown"),
+          "Pages: " + (doc.pageCount ?? "unknown"),
+          "Page numbers supplied: " + (doc.pages?.map((page) => page.pageNumber).join(", ") ?? "not page-segmented"),
+          "Expected page numbers: " + (doc.expectedPageNumbers?.join(", ") ?? "not supplied"),
+          "SSA exhibit: " + (doc.exhibitReference ?? "not supplied"),
+          "Submission status: " + (doc.submissionStatus ?? "unknown"),
+          "Duplicate of: " + (doc.duplicateOf ?? "not identified"),
+        ].join("\n");
+        const pageText = doc.pages?.length
+          ? doc.pages.map((page) => [
+              "SOURCE PAGE " + page.pageNumber + (page.sourcePageLabel ? " | Original label: " + page.sourcePageLabel : ""),
+              "OCR confidence: " + (page.ocrConfidence ?? "not supplied"),
+              page.text,
+            ].join("\n")).join("\n\n")
+          : (doc.fullText ?? "");
+        sections.push(metadata + "\nFULL SOURCE TEXT (do not treat metadata as evidence):\n" + pageText);
+      }
+      const narrative = sections.join("\n\n===== NEXT RECORD ITEM =====\n\n");
+      const filing = toFiling({
+        narrative,
+        program: args.program,
+        filingDate: args.filingDate,
+        determinationDate: args.determinationDate,
+        age: args.age,
+        birthDate: args.birthDate,
+        education: args.education,
+        directEntryToSkilledWork: args.directEntryToSkilledWork,
+        monthlyEarnings: args.monthlyEarnings,
+        earningsYear: args.earningsYear,
+        selfEmployed: args.selfEmployed,
+        statutoryBlindness: args.statutoryBlindness,
+        onsetDate: args.onsetDate,
+      });
+      const caseFrameBlockers: string[] = [];
+      if (!args.program) caseFrameBlockers.push("Primary claim program is unknown. Establish Title II, Title XVI, or identify the primary program for a concurrent claim before grading.");
+      if (!args.filingDate) caseFrameBlockers.push("Current application filing date is unknown. Establish the legally operative filing date before selecting the medical-opinion rule regime.");
+      const report = caseFrameBlockers.length === 0 ? gradeForModel(filing) : null;
+      const unsupported: string[] = [];
+      if (args.program === "title-ii" || args.concurrentPrograms) {
+        unsupported.push(args.dateLastInsured
+          ? "Date last insured supplied but not adjudicated by the current engine; independently verify insured status/quarters and onset before or through the DLI."
+          : "Title II is selected but no verified date-last-insured/insured-status determination was supplied; obtain the SSA earnings/insured-status record and analyze onset against the DLI.");
+      }
+      if (args.program === "title-xvi" || args.concurrentPrograms) {
+        unsupported.push("Title XVI nonmedical eligibility (income, resources, living arrangements, and applicable exclusions) is not adjudicated by the disability engine and requires a separate determination.");
+      }
+      if (args.protectiveFilingDate || args.actualFilingDate) unsupported.push("Protective filing and actual submission dates are preserved in the intake manifest but not reconciled by the current engine; distinguish protective filing, application completion, submission, and SSA receipt.");
+      else unsupported.push("No verified protective-filing/application-submission/SSA-receipt chronology was supplied; establish each date separately where applicable.");
+      const priorDecisionDocument = args.documents.some((doc) => /prior.*decision|ALJ decision|administrative law judge decision|appeals council/i.test(doc.documentType + " " + doc.title));
+      if (args.priorDecisionDate || priorDecisionDocument) unsupported.push("Prior decision supplied or identified but not analyzed for administrative res judicata, reopening, prior findings, changed circumstances, or the effect of the prior adjudicated period by the current engine.");
+      if (!args.program) unsupported.push("Program/title not specified; do not assume Title II, Title XVI, or concurrent eligibility.");
+      unsupported.push("Mental-function extraction in the deterministic engine is a limited keyword-presence proxy; it does not independently rate the four paragraph B domains, assess frequency/severity/duration, or construct a function-by-function mental RFC. The agent must perform and cite that analysis from the full record.");
+      unsupported.push("The deterministic RFC model is not a complete function-by-function physical or mental RFC assessment and does not fully model attendance, off-task time, pace, breaks, handling/fingering/reaching, environmental limits, or all sustained-work demands. The agent must separately assess supported restrictions and explain each inference.");
+      unsupported.push("The deterministic step-five model does not independently establish the occupational base, job incidence, VE testimony reliability, DOT/SCO conflicts, or all erosion issues. Perform a separate vocational analysis when material.");
+      return json({
+        caseFrame: {
+          status: caseFrameBlockers.length === 0 ? "READY_FOR_DETERMINISTIC_TRIAGE" : "BLOCKED_PENDING_VERIFIED_CASE_FRAME",
+          primaryProgram: args.program ?? null,
+          concurrentPrograms: args.concurrentPrograms ?? false,
+          currentFilingDate: args.filingDate ?? null,
+          determinationDate: args.determinationDate ?? null,
+          blockers: caseFrameBlockers,
+          note: "A supplied value is not automatically verified. Confirm the operative application date and program from primary SSA records before relying on the grade.",
+        },
+        recordIntake: {
+          documentCount: args.documents.length,
+          documents: args.documents.map(({ fullText, pages, ...metadata }) => {
+            const pageNumbers = pages?.map((page) => page.pageNumber) ?? [];
+            const expected = metadata.expectedPageNumbers ?? (metadata.pageCount ? Array.from({ length: metadata.pageCount }, (_, index) => index + 1) : []);
+            return {
+              ...metadata,
+              pageNumbers,
+              pageCoverage: pages?.length
+                ? {
+                    pageSegmented: true,
+                    missingExpectedPages: expected.filter((page) => !pageNumbers.includes(page)),
+                    duplicatePageNumbers: pageNumbers.filter((page, index) => pageNumbers.indexOf(page) !== index),
+                    lowQualityPages: pages.filter((page) => page.ocrConfidence === "low" || page.ocrConfidence === "unreadable").map((page) => page.pageNumber),
+                  }
+                : { pageSegmented: false, limitation: "Full text supplied without page-level segmentation; exact page citations cannot be verified from this intake alone." },
+              characterCount: pages?.length ? pages.reduce((total, page) => total + page.text.length, 0) : (fullText?.length ?? 0),
+            };
+          }),
+          suppliedSections: {
+            claimantNarrative: Boolean(args.claimantNarrative),
+            proceduralHistory: Boolean(args.proceduralHistory),
+            workHistory: Boolean(args.workHistory),
+            treatmentChronology: Boolean(args.treatmentChronology),
+          },
+          preservedButNotEngineAdjudicated: {
+            dateLastInsured: args.dateLastInsured ?? null,
+            protectiveFilingDate: args.protectiveFilingDate ?? null,
+            actualFilingDate: args.actualFilingDate ?? null,
+            priorDecisionDate: args.priorDecisionDate ?? null,
+            concurrentPrograms: args.concurrentPrograms ?? false,
+          },
+        },
+        requiredAgentReview: unsupported,
+        deterministicGrade: report,
+        instruction: "This is a full-text intake. When caseFrame.status is BLOCKED_PENDING_VERIFIED_CASE_FRAME, no deterministic grade was run; resolve the listed blockers using primary SSA records. Otherwise the deterministic result remains triage only and is not a substitute for source-by-source legal analysis. The reviewing agent must independently reconcile every document, preserve conflicting accounts, identify missing pages/exhibits and submission/receipt proof, and analyze every item listed in requiredAgentReview. Never describe a supplied document as filed, received, or considered merely because it is present here.",
+      });
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
   server.registerTool("weigh_sentences", {
     title: "Weigh each sentence",
     description: "Classify every sentence into a 20 CFR 404.1513 evidence category and say what that sentence is legally incompetent to prove. This is the sentence method. It is not a per-word percentage. Objective medical evidence, medical opinion, other medical evidence, and nonmedical evidence do different jobs.",
@@ -192,6 +482,94 @@ export function createMcpServer(): McpServer {
     inputSchema: { citation: z.string().min(2).describe("Section, POMS id, listing id, or grid rule id.") },
     annotations: readOnly,
   }, async ({ citation }) => json(quoteForModel(citation)));
+
+  server.registerTool("validate_audit_closure", {
+    title: "Validate recursive audit closure gates",
+    description: "Check whether the agent's reported audit ledger satisfies the minimum conditions for a no-new-flags completion claim. This validates supplied attestations only; it does not independently verify the truth of the audit or legal conclusions.",
+    inputSchema: {
+      domainDispositions: z.array(z.object({
+        domain: z.string().min(1),
+        status: z.enum(["applicable", "not-applicable", "unresolved"]),
+        reason: z.string().optional(),
+        applicableAuthoritiesVerified: z.boolean().optional(),
+      })).min(1),
+      flags: z.array(z.object({
+        id: z.string().min(1),
+        status: z.enum(["verified-remedied", "blocked", "unresolved", "open"]),
+        verificationEvidence: z.string().optional(),
+        blockReason: z.string().optional(),
+      })),
+      consecutiveFullPassesWithoutNewFlags: z.number().int().min(0),
+      allSourcePagesAndSubmissionStatusesReconciled: z.boolean(),
+      allMaterialConflictsResolvedOrExplicitlyPreserved: z.boolean(),
+      allRemediationsRechecked: z.boolean(),
+      testsActuallyRun: z.array(z.string()),
+      testFailures: z.array(z.string()),
+      unresolvedCorpusGaps: z.array(z.string()),
+    },
+    annotations: readOnly,
+  }, async (args) => {
+    const framework = legalFramework() as { domains?: Array<{ id: string }> };
+    const expectedDomainIds = framework.domains?.map((domain) => domain.id) ?? [];
+    const suppliedDomainIds = new Set(args.domainDispositions.map((domain) => domain.domain));
+    const missingDomainIds = expectedDomainIds.filter((id) => !suppliedDomainIds.has(id));
+    const unresolvedDomains = args.domainDispositions.filter((d) =>
+      d.status === "unresolved" ||
+      (d.status === "not-applicable" && !d.reason) ||
+      (d.status === "applicable" && d.applicableAuthoritiesVerified !== true),
+    );
+    const unclosedFlags = args.flags.filter((f) =>
+      f.status === "unresolved" || f.status === "open" ||
+      (f.status === "verified-remedied" && !f.verificationEvidence) ||
+      (f.status === "blocked" && !f.blockReason),
+    );
+    const blockers = [
+      ...(missingDomainIds.length ? ["One or more domains in the legal coverage framework were omitted from the audit ledger."] : []),
+      ...(unresolvedDomains.length ? ["One or more legal domains remain unresolved or lack verified primary authority."] : []),
+      ...(unclosedFlags.length ? ["One or more flags lack verified closure or a documented blocking reason."] : []),
+      ...(args.consecutiveFullPassesWithoutNewFlags < 2 ? ["Fewer than two consecutive complete passes without new actionable flags."] : []),
+      ...(!args.allSourcePagesAndSubmissionStatusesReconciled ? ["Source/page completeness or submission/receipt status is unreconciled."] : []),
+      ...(!args.allMaterialConflictsResolvedOrExplicitlyPreserved ? ["Material evidentiary conflicts remain unaddressed."] : []),
+      ...(!args.allRemediationsRechecked ? ["One or more remediations have not been re-audited."] : []),
+      ...(args.testsActuallyRun.length === 0 ? ["No tests are reported as actually executed."] : []),
+      ...(args.testFailures.length ? ["Tests report failures."] : []),
+      ...(args.unresolvedCorpusGaps.length ? ["The legal corpus has unresolved authority gaps."] : []),
+    ];
+    return json({
+      eligibleForNoNewFlagsStatus: blockers.length === 0,
+      status: blockers.length === 0 ? "CONDITIONALLY VERIFIED — based on supplied audit attestations only" : "INCOMPLETE — DO NOT CLAIM AUDIT CLOSURE",
+      blockers,
+      unresolvedDomainIds: unresolvedDomains.map((d) => d.domain),
+      missingDomainIds,
+      unclosedFlagIds: unclosedFlags.map((f) => f.id),
+      testsActuallyRun: args.testsActuallyRun,
+      testFailures: args.testFailures,
+      limitation: "This gate checks completeness of supplied audit attestations. It cannot independently establish that source documents, legal research, or agent conclusions are correct. A reviewer must verify the underlying artifacts.",
+    });
+  });
+
+  server.registerTool("fetch_official_authority", {
+    title: "Fetch current official SSA legal authority",
+    description: "Retrieve full text from allowlisted official government sources: eCFR, SSA rulings/POMS/HALLEX, U.S. Code House, Federal Register, GovInfo, Third Circuit, and Supreme Court. Use exact official URLs from the legal framework or verified research. Returns retrieval date, final URL, SHA-256, and extracted text. Never treat retrieval alone as an applicability or legal conclusion.",
+    inputSchema: {
+      url: z.string().url().describe("Exact HTTPS URL on an allowlisted official government domain."),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  }, async ({ url }) => {
+    try {
+      const result = await fetchOfficialAuthority(url);
+      return json(result);
+    } catch (error) {
+      return failure(error);
+    }
+  });
+
+  server.registerTool("get_legal_framework", {
+    title: "Get the SSA legal coverage framework",
+    description: "Return the structured index of statutory, regulatory, SSR, POMS, procedural, and conditional SSA legal domains. This is a curated starter index, not a complete law corpus. For every case, classify each domain as applicable, not applicable with reasons, or unresolved; retrieve current official text before relying on it.",
+    inputSchema: {},
+    annotations: readOnly,
+  }, async () => json(legalFramework()));
 
   server.registerTool("search_authorities", {
     title: "Search the loaded authorities",
