@@ -47,7 +47,7 @@ describe("full-record provenance boundaries", () => {
         "DOCUMENT 2",
         "Source: Elaine Summers | Role: mother",
         "She observed that I avoid stores because I panic.",
-      ].join("\\n"),
+      ].join("\n"),
     });
     const opinion = facts.sentences.find((sentence) => sentence.text.startsWith("She opined"));
     const witness = facts.sentences.find((sentence) => sentence.text.startsWith("She observed"));
