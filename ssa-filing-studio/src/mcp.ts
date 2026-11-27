@@ -19,11 +19,33 @@ import {
   vocationalForModel,
   weighSentences,
 } from "./bench-api.js";
-import { BENCH_NOTICE, searchAuthorities } from "./corpus.js";
+import { BENCH_NOTICE, legalFramework, searchAuthorities } from "./corpus.js";
 import { novelNumbers } from "./draft.js";
 import type { FilingInput } from "./types.js";
 
-const SERVER_INSTRUCTIONS = `Deterministic SSA disability filing bench. filingStrength is not an SSA score. sequential.outcome is what the regulations do with facts the text establishes. Never invent a diagnosis, test, measurement, date, job, or limitation. When source documents are available, use grade_complete_record and provide every relevant document in full text with provenance and procedural/work/treatment chronologies; do not reduce the record to a narrative summary. Use grade_filing only for a genuinely narrative-only review. Before stating a rule, call quote_authority. Before keeping a rewrite, call compare_filings and discard it when novelNumbers or inventedClinicalMarkers is not empty. Do not tell a client they will be approved. If reliable is false, show the audit and do not present the number as a grade. Explicitly flag Title II insured-status/DLI, protective-filing, prior-decision, and concurrent-program issues because the current deterministic engine does not adjudicate them. Read ssa://guide.`;
+const SSA_AUDIT_PROTOCOL = `MANDATORY ITERATIVE AUDIT PROTOCOL — DO NOT STOP AFTER ONE PASS.
+
+A. Establish the governing case frame. Determine Title II, Title XVI, concurrent, child/adult, initial/appeal/continuing-review status; filing and protective-filing dates; alleged onset; DLI/insured status; adjudication period; prior determinations; age category at the legally relevant date; venue/circuit; and which filing-date evidence rules apply. Keep claimed, alleged, verified, and unresolved facts distinct.
+
+B. Load ssa://legal-framework and ssa://authorities. For EVERY legal domain, assign APPLICABLE, NOT APPLICABLE (with fact-specific reason), or UNRESOLVED. Identify controlling statutes, current CFR provisions, SSRs, applicable precedent, and relevant POMS/HALLEX instructions. Distinguish binding law from agency operating guidance. Retrieve and quote current official text through quote_authority/search_authorities when loaded; if absent, flag CORPUS GAP and retrieve primary authority externally. Record citation, official URL, effective date/version, retrieval date, scope, elements, and supersession status. Never claim all SSA law is loaded from a curated index.
+
+C. Evidence-first intake. Call grade_complete_record with all relevant source documents in full text, not summaries. Preserve page-level provenance, OCR confidence/illegibility, source/author credentials, creation date versus event date, period covered, exhibit/page identifiers, submission/receipt/consideration status, duplicates, attachments, and missing pages. Distinguish original source records from AI summaries, drafts, claimant recollections, and agency-generated records.
+
+D. Forward audit (law to record): for every element of every applicable authority, identify supporting evidence, contrary evidence, missing evidence, temporal relevance, source competence, and exact page/paragraph. Trace statute -> regulation -> SSR/precedent -> POMS/HALLEX -> required finding -> record support -> requested conclusion. Check all five sequential steps, MDI/severity/combination/duration/listings/equivalence, paragraph B/C where relevant, symptoms, medical opinions under the correct filing-date regime, prior administrative findings, RFC function-by-function and regular/continuing basis, PRW and current five-year rules, step-five burden/vocational evidence/grid erosion/transferability, SGA/work incentives, onset/DLI, insured status, Title XVI nonmedical eligibility, and appeals/procedural rules as applicable.
+
+E. Reverse audit (record to law): start with EVERY document, page, material fact, diagnosis, finding, symptom, opinion, work fact, third-party observation, procedural event, and contradiction. Identify which legal element it bears on, what time period it affects, what other evidence corroborates or conflicts, and whether it changes any step, RFC restriction, onset, credibility/consistency analysis, vocational conclusion, or procedural right. No source may be discarded as irrelevant without a reason. Do not let a document's presence imply filing, receipt, or exhibit consideration.
+
+F. Independent adversarial passes: (1) medical/evidentiary; (2) mental and physical functional; (3) vocational/SGA; (4) procedural/insured-status/program; (5) chronology and temporal consistency; (6) legal authority/citation; (7) document integrity/completeness; (8) claimant narrative and third-party corroboration; (9) counterargument/red-team; (10) remedy and filing-readiness. Then reconcile findings without averaging away conflicts.
+
+G. Flag ledger: each flag gets stable ID, severity, domain, exact source/page, governing authority, defect, consequence, confidence, whether actionable, and a concrete remedy. Classify VERIFIED, UNRESOLVED, BLOCKED, NOT APPLICABLE, or REMEDIED — REQUIRES RECHECK. Never mark remedied merely because text was edited.
+
+H. Remediation: fix the source mapping, missing authority, extraction, chronology, legal analysis, evidence linkage, citation, document structure, or draft defect. Never invent evidence or facts. Preserve original wording and source; keep proposed edits traceable. For every proposed rewrite, call compare_filings and reject unsupported novel numbers/clinical markers; also compare meaning, omissions, chronology, and qualifiers because number/marker detection alone is not sufficient.
+
+I. Repeat the entire forward and reverse audit after each material remediation. Re-open affected source pages and authority text; do not rely on prior summaries. Add newly discovered flags, close only with a reasoned verification record, and continue until two consecutive full passes produce no new actionable flags and every prior actionable flag is VERIFIED REMEDIED or explicitly BLOCKED with an owner/reason. Any unresolved legal authority, missing material record, unverified filing/receipt claim, unexplained contradiction, untested code change, or unsupported conclusion prevents a clean completion status.
+
+J. Deliver an audit report with pass count, coverage denominator and dispositions, source/page traceability, authority/version ledger, flag ledger, remediation diff, tests actually run and results, residual limitations, and exact readiness status. Never equate zero detected flags with completeness unless the audit coverage itself is verified. Do not promise approval or describe an internal index as an SSA score.`;
+
+const SERVER_INSTRUCTIONS = `Deterministic SSA disability filing bench. filingStrength is not an SSA score. sequential.outcome is what the regulations do with facts the text establishes. Never invent a diagnosis, test, measurement, date, job, or limitation. When source documents are available, use grade_complete_record and provide every relevant document in full text with provenance and procedural/work/treatment chronologies; do not reduce the record to a narrative summary. Use grade_filing only for a genuinely narrative-only review. Before stating a rule, call quote_authority. Before keeping a rewrite, call compare_filings and discard it when novelNumbers or inventedClinicalMarkers is not empty. Do not tell a client they will be approved. If reliable is false, show the audit and do not present the number as a grade. Explicitly flag Title II insured-status/DLI, protective-filing, prior-decision, and concurrent-program issues because the current deterministic engine does not adjudicate them. Read ssa://guide, ssa://legal-framework, and ssa://audit-protocol. For complete records, use the recursive-full-record-audit prompt and repeat forward/reverse audits after remediation.`;
 
 function filingShape(narrative: string) {
   return {
@@ -80,6 +102,12 @@ export function createMcpServer(): McpServer {
 
   server.registerResource("guide", "ssa://guide", { description: "Operating rules for using this bench. Read this before grading or rewriting a filing.", mimeType: "text/plain" }, async (uri) => ({
     contents: [{ uri: uri.href, mimeType: "text/plain", text: MODEL_GUIDE }],
+  }));
+  server.registerResource("legal-framework", "ssa://legal-framework", { description: "Structured SSA statutory, regulatory, ruling, POMS, procedural, and conditional-applicability coverage map. Curated starter; not exhaustive.", mimeType: "application/json" }, async (uri) => ({
+    contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(legalFramework(), null, 2) }],
+  }));
+  server.registerResource("audit-protocol", "ssa://audit-protocol", { description: "Mandatory recursive and reverse-recursive SSA audit protocol with iterative remediation and evidence-based stopping conditions.", mimeType: "text/markdown" }, async (uri) => ({
+    contents: [{ uri: uri.href, mimeType: "text/markdown", text: SSA_AUDIT_PROTOCOL }],
   }));
   server.registerResource("notice", "ssa://notice", { description: "The honesty notice that accompanies every grade.", mimeType: "text/plain" }, async (uri) => ({
     contents: [{ uri: uri.href, mimeType: "text/plain", text: BENCH_NOTICE }],
@@ -138,6 +166,28 @@ export function createMcpServer(): McpServer {
         content: {
           type: "text",
           text: `Help strengthen this filing.\n\nCall draft_strongest_filing. Keep every original sentence. Turn each GAP into a question for the client, with the blank still blank. Do not fill a blank from medical knowledge. If the user later supplies a rewritten filing, call compare_filings. If novelNumbers or inventedClinicalMarkers is not empty, reject the rewrite.\n\nFiling:\n${narrative}`,
+        },
+      }],
+    }),
+  );
+
+  server.registerPrompt(
+    "recursive-full-record-audit",
+    {
+      title: "Recursive full-record SSA audit",
+      description: "Run a multi-pass, recursive and reverse-recursive audit of the complete SSA record against applicable law, then remediate and repeat until a defensible no-new-flags stopping condition is reached.",
+      argsSchema: {
+        caseProfile: z.string().describe("Program, claim type, filing/protective-filing dates, alleged onset, DLI, adjudicative level, prior decisions, age, education, work background, and venue/circuit when known."),
+        recordManifest: z.string().describe("Complete document inventory with stable IDs, source/author, date/period, page count, page coverage, exhibit, submission/receipt status, and duplicate links."),
+        knownIssues: z.string().optional().describe("Known disputes, gaps, contradictions, prior findings, or issues to preserve."),
+      },
+    },
+    ({ caseProfile, recordManifest, knownIssues }) => ({
+      messages: [{
+        role: "user",
+        content: {
+          type: "text",
+          text: SSA_AUDIT_PROTOCOL + "\\n\\nCASE PROFILE:\\n" + caseProfile + "\\n\\nRECORD MANIFEST:\\n" + recordManifest + "\\n\\nKNOWN ISSUES:\\n" + (knownIssues ?? "None supplied; independently identify issues."),
         },
       }],
     }),
@@ -305,6 +355,13 @@ export function createMcpServer(): McpServer {
     inputSchema: { citation: z.string().min(2).describe("Section, POMS id, listing id, or grid rule id.") },
     annotations: readOnly,
   }, async ({ citation }) => json(quoteForModel(citation)));
+
+  server.registerTool("get_legal_framework", {
+    title: "Get the SSA legal coverage framework",
+    description: "Return the structured index of statutory, regulatory, SSR, POMS, procedural, and conditional SSA legal domains. This is a curated starter index, not a complete law corpus. For every case, classify each domain as applicable, not applicable with reasons, or unresolved; retrieve current official text before relying on it.",
+    inputSchema: {},
+    annotations: readOnly,
+  }, async () => json(legalFramework()));
 
   server.registerTool("search_authorities", {
     title: "Search the loaded authorities",
