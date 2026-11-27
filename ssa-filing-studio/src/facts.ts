@@ -271,6 +271,8 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   let carriedNonAms = false;
   let currentDocumentId: string | null = null;
   let currentPageNumber: number | null = null;
+  let currentSourcePageLabel: string | null = null;
+  let currentOcrConfidence: "high" | "medium" | "low" | "unreadable" | "not-applicable" | null = null;
   let currentProvenanceSource: string | null = null;
   let currentSourceRole: string | null = null;
   pieces.forEach((piece, index) => {
@@ -280,6 +282,8 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     if (documentMarker) {
       currentDocumentId = documentMarker[1]?.trim() ?? null;
       currentPageNumber = null;
+      currentSourcePageLabel = null;
+      currentOcrConfidence = null;
       currentProvenanceSource = null;
       currentSourceRole = null;
       carried = null;
@@ -292,8 +296,14 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
       carried = null;
       carriedNonAms = false;
     }
-    const pageMarker = /^SOURCE PAGE\s+(\d+)/i.exec(text);
-    if (pageMarker?.[1]) currentPageNumber = Number(pageMarker[1]);
+    const pageMarker = /^SOURCE PAGE\s+(\d+)(?:\s*\|\s*Original label:\s*(.*))?/i.exec(text);
+    if (pageMarker?.[1]) {
+      currentPageNumber = Number(pageMarker[1]);
+      currentSourcePageLabel = pageMarker[2]?.trim() || null;
+      currentOcrConfidence = null;
+    }
+    const ocrMarker = /^OCR confidence:\s*(high|medium|low|unreadable|not-applicable)$/i.exec(text);
+    if (ocrMarker?.[1]) currentOcrConfidence = ocrMarker[1].toLowerCase() as NonNullable<typeof currentOcrConfidence>;
     const provenanceMarker = /^Source:\s*(.*?)(?:\s*\|\s*Role:\s*(.*))?$/i.exec(text);
     if (provenanceMarker) {
       currentProvenanceSource = provenanceMarker[1]?.trim() || null;
@@ -338,7 +348,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
       reservedIssue: reservedWhy !== null,
       reservedWhy,
       sourceName: usedSource,
-      provenance: { documentId: currentDocumentId, pageNumber: currentPageNumber, sourceName: currentProvenanceSource, sourceRole: currentSourceRole },
+      provenance: { documentId: currentDocumentId, pageNumber: currentPageNumber, sourcePageLabel: currentSourcePageLabel, ocrConfidence: currentOcrConfidence, sourceName: currentProvenanceSource, sourceRole: currentSourceRole },
       tags: classified.tags,
       legallyIncompetentFor: incompetent,
     });
