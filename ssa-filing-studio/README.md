@@ -35,7 +35,7 @@ The MCP now exposes:
 - `ssa://legal-framework`: a structured statutory/regulatory/SSR/POMS/procedural coverage index. It is explicitly a curated starter, not an exhaustive or self-updating statement of SSA law.
 - `ssa://audit-protocol`: the mandatory recursive and reverse-recursive evidence-to-law and law-to-evidence audit protocol.
 - `recursive-full-record-audit`: a prompt for repeated legal, medical, functional, vocational, procedural, chronology, completeness, and adversarial review.
-- `grade_complete_record`: full-text document intake with provenance, dates, page counts, exhibit references, duplicates, and filing/receipt status.
+- `grade_complete_record`: full-text and page-segmented document intake with provenance, original page labels, OCR quality, missing/duplicate page checks, exhibit references, duplicates, and filing/receipt status.
 - `get_legal_framework`: returns the coverage map.
 - `validate_audit_closure`: checks reported closure gates, including two consecutive full passes with no new actionable flags, resolved legal-domain dispositions, verified remediation, and test results. It validates supplied attestations; it does not independently prove them.
 
