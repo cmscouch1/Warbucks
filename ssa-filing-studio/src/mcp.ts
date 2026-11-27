@@ -101,7 +101,7 @@ export function createMcpServer(): McpServer {
     { description: "Verbatim Appendix 1 listing. The id is the listing number, such as 12.04.", mimeType: "text/plain" },
     async (uri, variables) => {
       const id = String(variables.id ?? "");
-      return { contents: [{ uri: uri.href, mimeType: "text/plain", text: JSON.stringify(listingForModel(id), null, 2) }] };
+      return { contents: [{ uri: uri.href, mimeType: "text/plain", text: JSON.stringify(await listingForModel(id), null, 2) }] };
     },
   );
 
@@ -168,12 +168,12 @@ export function createMcpServer(): McpServer {
 
   server.registerTool("grade_filing", {
     title: "Grade a filing",
-    description: "Run the sequential evaluation and the filing-strength index on the words given. Returns the deciding step, the sentence ledger, opinion weighing, listing path, vocational rule, the strongest honest draft, and the audit. Do not add facts that are not in the narrative or the structured fields. Do not describe filingStrength as an SSA score or an approval probability. If reliable is false, show the failed audit checks and do not present the number as a grade.",
+    description: "Run the sequential evaluation and the filing-strength index on the words given, through the LangGraph reflection graph. Returns the deciding step, the sentence ledger, opinion weighing, listing path, vocational rule, the strongest honest draft, the audit, and reflection. reflection.stoppedBecause is clean, iteration-limit, or guardrail. Do not add facts that are not in the narrative or the structured fields. Do not describe filingStrength as an SSA score or an approval probability. If reliable is false, or reflection.stoppedBecause is not clean, show the failed audit checks and do not present the number as a grade.",
     inputSchema: filingShape("The filing text only. Do not add a diagnosis, test, measurement, or limitation the client did not state."),
     annotations: readOnly,
   }, async (args) => {
     try {
-      return json(gradeForModel(toFiling(args)));
+      return json(await gradeForModel(toFiling(args)));
     } catch (error) {
       return failure(error);
     }
@@ -211,7 +211,7 @@ export function createMcpServer(): McpServer {
       narrative: z.string().optional().describe("Optional filing text. Omit it to quote the listing only."),
     },
     annotations: readOnly,
-  }, async ({ id, narrative }) => json(listingForModel(id, narrative)));
+  }, async ({ id, narrative }) => json(await listingForModel(id, narrative)));
 
   server.registerTool("get_sga_amount", {
     title: "Get the SGA amount",
@@ -262,7 +262,7 @@ export function createMcpServer(): McpServer {
     annotations: readOnly,
   }, async (args) => {
     try {
-      return json(draftForModel(toFiling(args)));
+      return json(await draftForModel(toFiling(args)));
     } catch (error) {
       return failure(error);
     }
@@ -279,7 +279,7 @@ export function createMcpServer(): McpServer {
   }, async (args) => {
     try {
       const { revisedNarrative, ...rest } = args;
-      return json(compareFilings(toFiling(rest), revisedNarrative));
+      return json(await compareFilings(toFiling(rest), revisedNarrative));
     } catch (error) {
       return failure(error);
     }
@@ -315,7 +315,7 @@ export function createMcpServer(): McpServer {
     description: "Run the regulatory fixtures: substantial gainful activity boundary, reserved-issue opinions, a 12.04 medical file, grid rule 201.09, Title XVI statutory blindness, and the pre-2017 opinion rule. If passed is false, stop using grades from this server and report failures.",
     inputSchema: {},
     annotations: readOnly,
-  }, async () => json(runBenchSelfTest()));
+  }, async () => json(await runBenchSelfTest()));
 
   return server;
 }

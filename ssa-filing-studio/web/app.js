@@ -49,6 +49,7 @@ function render(report) {
       <p class="outcome ${outcomeClass(report.sequential.outcome)}">${escapeHtml(outcomeLabel(report.sequential.outcome))}</p>
       <p>${escapeHtml(report.sequential.headline)}</p>
       <p class="index">Filing strength index <strong>${report.filingStrength}</strong> of 100. ${report.pointsLeft} points sit in missing facts. This index is not an SSA score.</p>
+      ${report.reflection ? `<p class="muted">Reflection graph: ${escapeHtml(report.reflection.stoppedBecause)}, ${report.reflection.iterations} generate ${report.reflection.iterations === 1 ? "pass" : "passes"}.</p>` : ""}
       ${(report.overrides ?? []).length ? `<ul class="callout">${report.overrides.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>` : ""}
       ${report.reliable ? "" : `<p><strong>The audit failed.</strong> The number above is not a grade.</p><ul>${audit}</ul>`}
     </article>

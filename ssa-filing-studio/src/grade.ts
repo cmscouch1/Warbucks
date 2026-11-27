@@ -1,4 +1,4 @@
-import { authorityContains, BENCH_NOTICE } from "./corpus.js";
+import { authorityContains, BENCH_NOTICE, gridRule } from "./corpus.js";
 import { buildDraft } from "./draft.js";
 import { evaluateListing } from "./listings.js";
 import { evaluateSequential, filingStrength, pointsLeft, scoreFactors } from "./evaluate.js";
@@ -6,7 +6,7 @@ import { readFacts } from "./facts.js";
 import { joinSentences, splitSentences } from "./sentences.js";
 import type { AuditReport, FilingInput, GradeReport } from "./types.js";
 
-function audit(input: FilingInput, report: Omit<GradeReport, "audit" | "reliable">, rebuilt: string): AuditReport {
+function audit(input: FilingInput, report: Omit<GradeReport, "audit" | "reliable" | "reflection">, rebuilt: string): AuditReport {
   const checks = [];
   const narrative = input.narrative ?? "";
   const rejoined = joinSentences(splitSentences(narrative));
@@ -36,7 +36,21 @@ function audit(input: FilingInput, report: Omit<GradeReport, "audit" | "reliable
     checks.push({ id: "listing-allowance", passed: ok, detail: ok ? "The step 3 allowance uses a tested listing path." : "A step 3 allowance was made without a tested listing path." });
   }
   if (report.vocational.ruleId) {
-    checks.push({ id: "grid-rule-named", passed: true, detail: `Vocational result cites rule ${report.vocational.ruleId}.` });
+    const printed = gridRule(report.vocational.ruleId);
+    const agrees = printed !== undefined && (!report.vocational.directed || printed.decision === report.vocational.outcome);
+    checks.push({
+      id: "grid-rule-named",
+      passed: agrees,
+      detail: agrees ? `Rule ${report.vocational.ruleId} in the corpus agrees with this result.` : `Rule ${report.vocational.ruleId} does not agree with the vocational outcome.`,
+    });
+  }
+  if (report.vocational.borderline) {
+    const stayed = report.vocational.outcome === "not-disabled" && report.vocational.ruleId === report.vocational.borderline.chronologicalRuleId;
+    checks.push({
+      id: "borderline-not-moved",
+      passed: stayed,
+      detail: stayed ? "The chronological grid rule was kept." : "The borderline flag moved the age category.",
+    });
   }
   checks.push({ id: "no-fabricated-numbers", passed: report.draft.fabricationCheck.passed, detail: report.draft.fabricationCheck.passed ? "The gap sentences add no new numbers." : `New numbers in the gaps: ${report.draft.fabricationCheck.novelNumbers.join(", ")}.` });
   const rebuiltSame = rebuilt === narrative;
@@ -44,19 +58,7 @@ function audit(input: FilingInput, report: Omit<GradeReport, "audit" | "reliable
   return { ok: checks.every((check) => check.passed), healed: false, healNotes: [], checks };
 }
 
-export function gradeFiling(input: FilingInput): GradeReport {
-  const first = gradeOnce(input);
-  if (first.audit.ok) return first;
-  const healedNarrative = input.narrative.includes(".") ? input.narrative : input.narrative.replace(/;\s+/g, ".\n");
-  if (healedNarrative === input.narrative) return { ...first, reliable: false };
-  const second = gradeOnce({ ...input, narrative: healedNarrative });
-  second.audit.healed = true;
-  second.audit.healNotes.push("The filing had no sentence breaks. It was split on semicolons and graded again.");
-  second.audit.ok = second.audit.ok && second.audit.checks.every((check) => check.passed);
-  return { ...second, reliable: second.audit.ok };
-}
-
-function gradeOnce(input: FilingInput): GradeReport {
+export function gradeOnce(input: FilingInput): Omit<GradeReport, "reflection"> {
   const { facts, piecesJoin } = readFacts(input);
   const listing = evaluateListing(facts);
   const { sequential, vocational } = evaluateSequential(facts, listing);

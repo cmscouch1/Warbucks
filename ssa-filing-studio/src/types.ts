@@ -263,6 +263,15 @@ export interface AuditReport {
   checks: AuditCheck[];
 }
 
+export interface ReflectionTrace {
+  /** Node names from the LangGraph reflection example: generate, then reflect. */
+  nodes: ("generate" | "reflect")[];
+  iterations: number;
+  /** clean: the audit passed. iteration-limit: the graph hit the example's 3-iteration stop. guardrail: reflect refused to change the filing. */
+  stoppedBecause: "clean" | "iteration-limit" | "guardrail";
+  checkpointer: "MemorySaver";
+}
+
 export interface GradeReport {
   reliable: boolean;
   notice: string;
@@ -278,4 +287,5 @@ export interface GradeReport {
   overrides: string[];
   draft: Draft;
   audit: AuditReport;
+  reflection: ReflectionTrace;
 }

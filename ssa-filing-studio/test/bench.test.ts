@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { compareFilings, quoteForModel, sgaForModel, vocationalForModel } from "../src/bench-api.js";
 import { quoteAuthority } from "../src/corpus.js";
-import { gradeFiling } from "../src/grade.js";
+import { END } from "@langchain/langgraph";
+import { gradeFiling, punctuationOnly, reflectionRoute, semicolonHeal } from "../src/reflection.js";
 import { createMcpServer } from "../src/mcp.js";
 import { runSelfTest } from "../src/selftest.js";
 import { joinSentences, splitSentences } from "../src/sentences.js";
@@ -21,18 +22,33 @@ describe("regulation corpus", () => {
 });
 
 describe("bench", () => {
-  it("passes the regulatory self-test", () => {
-    const result = runSelfTest();
+  it("passes the regulatory self-test", async () => {
+    const result = await runSelfTest();
     expect(result.failures, result.failures.map((failure) => `${failure.name}: ${failure.detail}`).join("\n")).toEqual([]);
   });
 
-  it("does not treat a bare exertional label as a grid fact", () => {
-    const report = gradeFiling({
+  it("does not treat a bare exertional label as a grid fact", async () => {
+    const report = await gradeFiling({
       narrative: "I am 57. I stopped working in 2019. Dr. Lee opined that I am limited to sedentary work.",
       filingDate: "2026-01-15",
     });
+    expect(report.reflection.stoppedBecause).toBe("clean");
+    expect(report.reflection.checkpointer).toBe("MemorySaver");
+    expect(report.reflection.nodes).toEqual(["generate"]);
     expect(report.vocational.directed).toBe(false);
     expect(report.sequential.outcome).not.toBe("disabled");
+  });
+});
+
+describe("reflection graph", () => {
+  it("stops on a clean audit, and refuses a reflect step that would change words", () => {
+    expect(reflectionRoute({ iterations: 1, healed: false, narrative: "Done.", reliable: true })).toBe(END);
+    expect(reflectionRoute({ iterations: 3, healed: false, narrative: "a; b", reliable: false })).toBe(END);
+    expect(reflectionRoute({ iterations: 1, healed: false, narrative: "a; b", reliable: false })).toBe("reflect");
+    expect(semicolonHeal("a; b")).toBe("a.\nb");
+    expect(punctuationOnly("a; b", "a.\nb")).toBe(true);
+    expect(punctuationOnly("a; b", "a.\nb MRI")).toBe(false);
+    expect(reflectionRoute({ iterations: 1, healed: false, narrative: "Already done.", reliable: false })).toBe(END);
   });
 });
 
@@ -49,8 +65,8 @@ describe("tools an LLM calls", () => {
     if (sga.found) expect(sga.amountUsed).toBe(1690);
   });
 
-  it("rejects a rewrite that adds an MRI and a new measurement", () => {
-    const compared = compareFilings(
+  it("rejects a rewrite that adds an MRI and a new measurement", async () => {
+    const compared = await compareFilings(
       { narrative: "My back hurts and I stopped working in 2024." },
       "My back hurts and I stopped working in 2024. An MRI showed a herniation. I can lift 10 pounds.",
     );
