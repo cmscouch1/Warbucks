@@ -414,6 +414,10 @@ export function createMcpServer(): McpServer {
     },
     annotations: readOnly,
   }, async (args) => {
+    const framework = legalFramework() as { domains?: Array<{ id: string }> };
+    const expectedDomainIds = framework.domains?.map((domain) => domain.id) ?? [];
+    const suppliedDomainIds = new Set(args.domainDispositions.map((domain) => domain.domain));
+    const missingDomainIds = expectedDomainIds.filter((id) => !suppliedDomainIds.has(id));
     const unresolvedDomains = args.domainDispositions.filter((d) =>
       d.status === "unresolved" ||
       (d.status === "not-applicable" && !d.reason) ||
@@ -425,12 +429,14 @@ export function createMcpServer(): McpServer {
       (f.status === "blocked" && !f.blockReason),
     );
     const blockers = [
+      ...(missingDomainIds.length ? ["One or more domains in the legal coverage framework were omitted from the audit ledger."] : []),
       ...(unresolvedDomains.length ? ["One or more legal domains remain unresolved or lack verified primary authority."] : []),
       ...(unclosedFlags.length ? ["One or more flags lack verified closure or a documented blocking reason."] : []),
       ...(args.consecutiveFullPassesWithoutNewFlags < 2 ? ["Fewer than two consecutive complete passes without new actionable flags."] : []),
       ...(!args.allSourcePagesAndSubmissionStatusesReconciled ? ["Source/page completeness or submission/receipt status is unreconciled."] : []),
       ...(!args.allMaterialConflictsResolvedOrExplicitlyPreserved ? ["Material evidentiary conflicts remain unaddressed."] : []),
       ...(!args.allRemediationsRechecked ? ["One or more remediations have not been re-audited."] : []),
+      ...(args.testsActuallyRun.length === 0 ? ["No tests are reported as actually executed."] : []),
       ...(args.testFailures.length ? ["Tests report failures."] : []),
       ...(args.unresolvedCorpusGaps.length ? ["The legal corpus has unresolved authority gaps."] : []),
     ];
@@ -439,6 +445,7 @@ export function createMcpServer(): McpServer {
       status: blockers.length === 0 ? "CONDITIONALLY VERIFIED — based on supplied audit attestations only" : "INCOMPLETE — DO NOT CLAIM AUDIT CLOSURE",
       blockers,
       unresolvedDomainIds: unresolvedDomains.map((d) => d.domain),
+      missingDomainIds,
       unclosedFlagIds: unclosedFlags.map((f) => f.id),
       testsActuallyRun: args.testsActuallyRun,
       testFailures: args.testFailures,
