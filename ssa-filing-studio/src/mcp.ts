@@ -247,6 +247,13 @@ export function createMcpServer(): McpServer {
         periodStart: z.string().optional().describe("Beginning of the period described by the document."),
         periodEnd: z.string().optional().describe("End of the period described by the document."),
         pageCount: z.number().int().nonnegative().optional(),
+        pages: z.array(z.object({
+          pageNumber: z.number().int().positive(),
+          sourcePageLabel: z.string().optional(),
+          ocrConfidence: z.enum(["high", "medium", "low", "unreadable", "not-applicable"]).optional(),
+          text: z.string().min(1),
+        })).optional().describe("Preferred page-level source text. Preserve page order, original page labels, and OCR quality; do not silently omit blank, missing, or illegible pages."),
+        expectedPageNumbers: z.array(z.number().int().positive()).optional().describe("Known expected page numbers, including pages missing from the supplied scan/extract."),
         exhibitReference: z.string().optional().describe("SSA exhibit/page reference, if assigned."),
         submissionStatus: z.enum(["submitted", "uploaded", "served", "in-record", "not-submitted", "unknown"]).optional(),
         duplicateOf: z.string().optional().describe("Another documentId if this is a duplicate; retain it rather than silently dropping it."),
@@ -288,11 +295,20 @@ export function createMcpServer(): McpServer {
           "Document date: " + (doc.documentDate ?? "not supplied"),
           "Period: " + (doc.periodStart ?? "unknown") + " through " + (doc.periodEnd ?? "unknown"),
           "Pages: " + (doc.pageCount ?? "unknown"),
+          "Page numbers supplied: " + (doc.pages?.map((page) => page.pageNumber).join(", ") ?? "not page-segmented"),
+          "Expected page numbers: " + (doc.expectedPageNumbers?.join(", ") ?? "not supplied"),
           "SSA exhibit: " + (doc.exhibitReference ?? "not supplied"),
           "Submission status: " + (doc.submissionStatus ?? "unknown"),
           "Duplicate of: " + (doc.duplicateOf ?? "not identified"),
         ].join("\\n");
-        sections.push(metadata + "\\nFULL SOURCE TEXT (do not treat metadata as evidence):\\n" + doc.fullText);
+        const pageText = doc.pages?.length
+          ? doc.pages.map((page) => [
+              "SOURCE PAGE " + page.pageNumber + (page.sourcePageLabel ? " | Original label: " + page.sourcePageLabel : ""),
+              "OCR confidence: " + (page.ocrConfidence ?? "not supplied"),
+              page.text,
+            ].join("\\n")).join("\\n\\n")
+          : doc.fullText;
+        sections.push(metadata + "\\nFULL SOURCE TEXT (do not treat metadata as evidence):\\n" + pageText);
       }
       const narrative = sections.join("\\n\\n===== NEXT RECORD ITEM =====\\n\\n");
       const filing = toFiling({
@@ -319,7 +335,23 @@ export function createMcpServer(): McpServer {
       return json({
         recordIntake: {
           documentCount: args.documents.length,
-          documents: args.documents.map(({ fullText, ...metadata }) => ({ ...metadata, characterCount: fullText.length })),
+          documents: args.documents.map(({ fullText, pages, ...metadata }) => {
+            const pageNumbers = pages?.map((page) => page.pageNumber) ?? [];
+            const expected = metadata.expectedPageNumbers ?? (metadata.pageCount ? Array.from({ length: metadata.pageCount }, (_, index) => index + 1) : []);
+            return {
+              ...metadata,
+              pageNumbers,
+              pageCoverage: pages?.length
+                ? {
+                    pageSegmented: true,
+                    missingExpectedPages: expected.filter((page) => !pageNumbers.includes(page)),
+                    duplicatePageNumbers: pageNumbers.filter((page, index) => pageNumbers.indexOf(page) !== index),
+                    lowQualityPages: pages.filter((page) => page.ocrConfidence === "low" || page.ocrConfidence === "unreadable").map((page) => page.pageNumber),
+                  }
+                : { pageSegmented: false, limitation: "Full text supplied without page-level segmentation; exact page citations cannot be verified from this intake alone." },
+              characterCount: pages?.length ? pages.reduce((total, page) => total + page.text.length, 0) : fullText.length,
+            };
+          }),
           suppliedSections: {
             claimantNarrative: Boolean(args.claimantNarrative),
             proceduralHistory: Boolean(args.proceduralHistory),
