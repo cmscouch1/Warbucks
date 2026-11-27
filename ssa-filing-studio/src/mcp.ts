@@ -282,10 +282,10 @@ export function createMcpServer(): McpServer {
   }, async (args) => {
     try {
       const sections: string[] = [];
-      if (args.claimantNarrative) sections.push("CLAIMANT NARRATIVE (verbatim):\\n" + args.claimantNarrative);
-      if (args.proceduralHistory) sections.push("PROCEDURAL HISTORY (source supplied; dates/status must be verified):\\n" + args.proceduralHistory);
-      if (args.workHistory) sections.push("WORK HISTORY (source supplied; do not infer SGA or PRW from job title alone):\\n" + args.workHistory);
-      if (args.treatmentChronology) sections.push("TREATMENT CHRONOLOGY (source supplied; preserve longitudinal sequence):\\n" + args.treatmentChronology);
+      if (args.claimantNarrative) sections.push("CLAIMANT NARRATIVE (verbatim):\n" + args.claimantNarrative);
+      if (args.proceduralHistory) sections.push("PROCEDURAL HISTORY (source supplied; dates/status must be verified):\n" + args.proceduralHistory);
+      if (args.workHistory) sections.push("WORK HISTORY (source supplied; do not infer SGA or PRW from job title alone):\n" + args.workHistory);
+      if (args.treatmentChronology) sections.push("TREATMENT CHRONOLOGY (source supplied; preserve longitudinal sequence):\n" + args.treatmentChronology);
       for (const doc of args.documents) {
         const metadata = [
           "DOCUMENT " + doc.documentId,
@@ -300,17 +300,17 @@ export function createMcpServer(): McpServer {
           "SSA exhibit: " + (doc.exhibitReference ?? "not supplied"),
           "Submission status: " + (doc.submissionStatus ?? "unknown"),
           "Duplicate of: " + (doc.duplicateOf ?? "not identified"),
-        ].join("\\n");
+        ].join("\n");
         const pageText = doc.pages?.length
           ? doc.pages.map((page) => [
               "SOURCE PAGE " + page.pageNumber + (page.sourcePageLabel ? " | Original label: " + page.sourcePageLabel : ""),
               "OCR confidence: " + (page.ocrConfidence ?? "not supplied"),
               page.text,
-            ].join("\\n")).join("\\n\\n")
+            ].join("\n")).join("\n\n")
           : (doc.fullText ?? "");
-        sections.push(metadata + "\\nFULL SOURCE TEXT (do not treat metadata as evidence):\\n" + pageText);
+        sections.push(metadata + "\nFULL SOURCE TEXT (do not treat metadata as evidence):\n" + pageText);
       }
-      const narrative = sections.join("\\n\\n===== NEXT RECORD ITEM =====\\n\\n");
+      const narrative = sections.join("\n\n===== NEXT RECORD ITEM =====\n\n");
       const filing = toFiling({
         narrative,
         program: args.program,
