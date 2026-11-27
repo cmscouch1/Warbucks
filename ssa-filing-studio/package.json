@@ -7,6 +7,7 @@
   "scripts": {
     "corpus": "python3 scripts/build-corpus.py",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "mcp": "tsx src/mcp.ts",
     "start": "tsx src/server.ts",
     "self-test": "tsx src/selftest-cli.ts"
