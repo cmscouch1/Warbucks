@@ -87,3 +87,11 @@ A birth date is used for age (attained the day before the birthday) and for a bo
 The five-year past-work period is measured from the filing date, or from today when no filing date is given. This bench has no date last insured and does not shorten that period.
 
 Age-18 redeterminations are not applied. The notes that describe them cite POMS DI 22001.001, and that section is not in this corpus. An adult listing is still tested for a child when no Part B listing is named.
+
+### Evidence provenance and case-frame safeguards
+
+The full-record intake now carries document ID, page number, original page label, OCR confidence, source name, and source role onto each sentence-level evidence item. These provenance fields are independent of evidence-category classification: a lay witness remains identified as a lay witness without being treated as a medical source. The flattened narrative is still an intermediate compatibility representation; it is not yet a durable, persistent evidence database.
+
+The deterministic facts model no longer substitutes the computer's current date when both determination date and filing date are absent. In that situation it leaves the reference date unresolved, does not compute attained age from a birth date, does not infer elapsed duration from onset, and does not classify past work as within the five-year period. The opinion-rule regime and claim program also remain null when the filing date or program is unknown.
+
+The grade_complete_record MCP intake preserves the supplied intake but withholds its deterministic grade until the primary program and operative filing date are supplied. A supplied date or program is not thereby verified; primary SSA records must establish the operative values. This is a safeguard against silent defaults, not a substitute for full insured-status, onset, or procedural analysis.
