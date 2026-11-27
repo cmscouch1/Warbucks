@@ -302,7 +302,7 @@ export function createMcpServer(): McpServer {
 
   server.registerTool("grade_complete_record", {
     title: "Grade a complete SSA evidence record",
-    description: "Primary full-record intake for an SSA filing review. Supply the claimant narrative AND every relevant document in full text, preferably segmented page-by-page with original page labels and OCR quality, plus source, author/role, dates, page count, exhibit reference, and submission status. Include prior decisions, medical records, opinion evidence, treatment chronology, work history, function reports, third-party statements, and procedural records. The tool preserves a document manifest and passes the complete text to the existing deterministic evaluator. IMPORTANT: the current deterministic engine does not independently adjudicate Title II insured status/DLI, protective-filing disputes, prior-decision effect, or concurrent Title II/Title XVI eligibility; it flags those as agent-review issues rather than silently treating them as resolved. Never omit a document because it appears duplicative; identify duplicates in metadata and let the reviewing agent assess materiality.",
+    description: "Primary full-record intake for an SSA filing review. Supply the claimant narrative AND every relevant document in full text, preferably segmented page-by-page with original page labels and OCR quality, plus source, author/role, dates, page count, exhibit reference, and submission status. Include prior decisions, medical records, opinion evidence, treatment chronology, work history, function reports, third-party statements, and procedural records. The tool preserves a document manifest and passes the complete text to the existing deterministic evaluator only after the primary program and current filing date are established. If either is missing, it returns the complete intake manifest but withholds the deterministic grade rather than silently assuming Title II or the post-2017 medical-opinion rules. IMPORTANT: the current deterministic engine does not independently adjudicate Title II insured status/DLI, protective-filing disputes, prior-decision effect, or concurrent Title II/Title XVI eligibility; it flags those as agent-review issues rather than silently treating them as resolved. Never omit a document because it appears duplicative; identify duplicates in metadata and let the reviewing agent assess materiality.",
     inputSchema: {
       claimantNarrative: z.string().optional().describe("Claimant's own complete narrative, verbatim. Do not summarize away details."),
       determinationDate: z.string().optional().describe("Date of the adjudicative determination/hearing. Used for age and past-work timing; distinct from protective filing and application dates."),
@@ -396,7 +396,10 @@ export function createMcpServer(): McpServer {
         statutoryBlindness: args.statutoryBlindness,
         onsetDate: args.onsetDate,
       });
-      const report = gradeForModel(filing);
+      const caseFrameBlockers: string[] = [];
+      if (!args.program) caseFrameBlockers.push("Primary claim program is unknown. Establish Title II, Title XVI, or identify the primary program for a concurrent claim before grading.");
+      if (!args.filingDate) caseFrameBlockers.push("Current application filing date is unknown. Establish the legally operative filing date before selecting the medical-opinion rule regime.");
+      const report = caseFrameBlockers.length === 0 ? gradeForModel(filing) : null;
       const unsupported: string[] = [];
       if (args.program === "title-ii" || args.concurrentPrograms) {
         unsupported.push(args.dateLastInsured
@@ -415,6 +418,15 @@ export function createMcpServer(): McpServer {
       unsupported.push("The deterministic RFC model is not a complete function-by-function physical or mental RFC assessment and does not fully model attendance, off-task time, pace, breaks, handling/fingering/reaching, environmental limits, or all sustained-work demands. The agent must separately assess supported restrictions and explain each inference.");
       unsupported.push("The deterministic step-five model does not independently establish the occupational base, job incidence, VE testimony reliability, DOT/SCO conflicts, or all erosion issues. Perform a separate vocational analysis when material.");
       return json({
+        caseFrame: {
+          status: caseFrameBlockers.length === 0 ? "READY_FOR_DETERMINISTIC_TRIAGE" : "BLOCKED_PENDING_VERIFIED_CASE_FRAME",
+          primaryProgram: args.program ?? null,
+          concurrentPrograms: args.concurrentPrograms ?? false,
+          currentFilingDate: args.filingDate ?? null,
+          determinationDate: args.determinationDate ?? null,
+          blockers: caseFrameBlockers,
+          note: "A supplied value is not automatically verified. Confirm the operative application date and program from primary SSA records before relying on the grade.",
+        },
         recordIntake: {
           documentCount: args.documents.length,
           documents: args.documents.map(({ fullText, pages, ...metadata }) => {
@@ -450,7 +462,7 @@ export function createMcpServer(): McpServer {
         },
         requiredAgentReview: unsupported,
         deterministicGrade: report,
-        instruction: "This is a full-text intake plus the current deterministic bench result, not a substitute for source-by-source legal analysis. The reviewing agent must independently reconcile every document, preserve conflicting accounts, identify missing pages/exhibits and submission/receipt proof, and analyze every item listed in requiredAgentReview. Never describe a supplied document as filed, received, or considered merely because it is present here.",
+        instruction: "This is a full-text intake. When caseFrame.status is BLOCKED_PENDING_VERIFIED_CASE_FRAME, no deterministic grade was run; resolve the listed blockers using primary SSA records. Otherwise the deterministic result remains triage only and is not a substitute for source-by-source legal analysis. The reviewing agent must independently reconcile every document, preserve conflicting accounts, identify missing pages/exhibits and submission/receipt proof, and analyze every item listed in requiredAgentReview. Never describe a supplied document as filed, received, or considered merely because it is present here.",
       });
     } catch (error) {
       return failure(error);
