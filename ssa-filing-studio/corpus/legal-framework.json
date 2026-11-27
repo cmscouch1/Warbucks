@@ -337,7 +337,47 @@
           "url": "https://www.ecfr.gov/current/title-20/section-404.1594"
         }
       ]
+    },
+    {
+      "id": "venue-precedent-and-acquiescence",
+      "name": "Controlling Supreme Court and federal circuit precedent; SSA Acquiescence Rulings where applicable",
+      "authorities": [
+        {
+          "citation": "Venue-specific controlling federal appellate precedent (research required after identifying venue/circuit)",
+          "url": "https://www.ca3.uscourts.gov/opinions"
+        },
+        {
+          "citation": "SSA Acquiescence Rulings and current status",
+          "url": "https://www.ssa.gov/OP_Home/rulings/rulfind1.html"
+        }
+      ]
+    },
+    {
+      "id": "impairment-specific-rulings",
+      "name": "Conditional impairment-specific policy rulings",
+      "authorities": [
+        {
+          "citation": "SSR 12-2p — Fibromyalgia",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR2012-02-di-01.html"
+        },
+        {
+          "citation": "SSR 19-2p — Obesity",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR2019-02-di-01.html"
+        },
+        {
+          "citation": "SSR 19-4p — Primary Headache Disorders",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR2019-04-di-01.html"
+        },
+        {
+          "citation": "SSR 13-2p — Drug Addiction and Alcoholism",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR2013-02-di-01.html"
+        },
+        {
+          "citation": "SSR 11-2p — Documenting and Evaluating Disability in Young Adults",
+          "url": "https://www.ssa.gov/OP_Home/rulings/di/01/SSR2011-02-di-01.html"
+        }
+      ]
     }
   ],
-  "requiredAudit": "For every domain, mark APPLICABLE, NOT APPLICABLE with fact-based reason, or UNRESOLVED. For each applicable authority retrieve current official text, record retrieval date/version/effective date, map every element to record evidence, identify conflicts and missing proof, and cite the exact provision. Do not label the corpus complete until every domain has a disposition and all applicable primary authorities have been loaded and tested."
+  "requiredAudit": "For every domain, mark APPLICABLE, NOT APPLICABLE with fact-based reason, or UNRESOLVED. For each applicable authority retrieve current official text, record retrieval date/version/effective date, map every element to record evidence, identify conflicts and missing proof, and cite the exact provision. Do not label the corpus complete until every domain has a disposition and all applicable primary authorities have been loaded and tested. Include venue-specific controlling precedent and any applicable Acquiescence Ruling; impairment-specific rulings must be screened when the record alleges or establishes the relevant condition."
 }
