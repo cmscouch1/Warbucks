@@ -17,7 +17,7 @@ const OBJECTIVE =
   /\b(mri|ct scan|cat scan|x-ray|xray|radiograph|emg|nerve conduction|eeg|ecg|ekg|spirometry|fev\s?1|a1c|hemoglobin a1c|ejection fraction|laboratory|blood test|biopsy|range of motion|straight[- ]leg|phq-9|gad-7|wais|wisc|full[- ]scale iq|mental status examination|on examination|imaging (?:showed|shows|revealed|demonstrated))\b/i;
 
 const MEDICAL_SOURCE =
-  /\b(dr\.?|doctor|physician|psychiatrist|psychologist|rheumatologist|neurologist|orthoped(?:ic|ist)|cardiologist|pulmonologist|oncologist|surgeon|nurse practitioner|\bnp\b|aprn|physician assistant|pa-c|podiatrist|optometrist|audiologist|pediatrician)\b/i;
+  /\b(dr\.?|doctor|physician|psychiatrist|psychologist|rheumatologist|neurologist|orthoped(?:ic|ist)|cardiologist|pulmonologist|oncologist|surgeon|nurse practitioner|\bnp\b|aprn|apn(?:-c)?|pmhnp|fnp|crnp|physician assistant|pa-c|podiatrist|optometrist|audiologist|pediatrician)\b/i;
 
 /** 20 CFR 404.1502(a) does not list these practitioners. "Dr." in front of the name does not make them an acceptable medical source. */
 const NOT_ACCEPTABLE_SOURCE =
