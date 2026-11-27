@@ -30,6 +30,7 @@ function filingShape(narrative: string) {
     narrative: z.string().min(1).describe(narrative),
     program: z.enum(["title-ii", "title-xvi"]).optional().describe("title-ii is SSDI. title-xvi is SSI. Earnings do not deny at step 1 for Title XVI statutory blindness (20 CFR 416.984)."),
     filingDate: z.string().optional().describe("YYYY-MM-DD. A date before 2017-03-27 selects 20 CFR 404.1527. Omitting it selects 20 CFR 404.1520c, and the report says so."),
+    determinationDate: z.string().optional().describe("YYYY-MM-DD date of determination/hearing. Used for attained age and the five-year past-relevant-work window; do not substitute the application date."),
     age: z.number().int().optional().describe("Use only when the record states the age. Do not estimate."),
     birthDate: z.string().optional().describe("YYYY-MM-DD from the record. Used to compute SSA age (attained the day before the birthday) and to flag a borderline age when POMS DI 25001.001's three conditions are met. The chronological category is not moved."),
     education: z.enum(["illiterate", "marginal", "limited", "high-school-or-more"]).optional().describe("illiterate means cannot read or write a simple message. marginal is 6th grade or less. limited is 7th through 11th."),
@@ -46,6 +47,7 @@ function toFiling(args: {
   narrative: string;
   program?: "title-ii" | "title-xvi";
   filingDate?: string;
+  determinationDate?: string;
   age?: number;
   birthDate?: string;
   education?: "illiterate" | "marginal" | "limited" | "high-school-or-more";
@@ -184,6 +186,7 @@ export function createMcpServer(): McpServer {
     description: "Primary full-record intake for an SSA filing review. Supply the claimant narrative AND every relevant document in full text, with source, author/role, dates, page count, exhibit reference, and submission status. Include prior decisions, medical records, opinion evidence, treatment chronology, work history, function reports, third-party statements, and procedural records. The tool preserves a document manifest and passes the complete text to the existing deterministic evaluator. IMPORTANT: the current deterministic engine does not independently adjudicate Title II insured status/DLI, protective-filing disputes, prior-decision effect, or concurrent Title II/Title XVI eligibility; it flags those as agent-review issues rather than silently treating them as resolved. Never omit a document because it appears duplicative; identify duplicates in metadata and let the reviewing agent assess materiality.",
     inputSchema: {
       claimantNarrative: z.string().optional().describe("Claimant's own complete narrative, verbatim. Do not summarize away details."),
+      determinationDate: z.string().optional().describe("Date of the adjudicative determination/hearing. Used for age and past-work timing; distinct from protective filing and application dates."),
       documents: z.array(z.object({
         documentId: z.string().min(1).describe("Stable unique identifier for this record item."),
         title: z.string().min(1).describe("Document title or descriptive label."),
@@ -246,6 +249,7 @@ export function createMcpServer(): McpServer {
         narrative,
         program: args.program,
         filingDate: args.filingDate,
+        determinationDate: args.determinationDate,
         age: args.age,
         birthDate: args.birthDate,
         education: args.education,
