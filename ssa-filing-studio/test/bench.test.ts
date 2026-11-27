@@ -37,6 +37,19 @@ describe("bench", () => {
   });
 });
 
+describe("unknown case-frame dates", () => {
+  it("does not use the computer's current date to infer age, duration, or the filing-date opinion regime", () => {
+    const { facts } = readFacts({
+      narrative: "I was born on January 1, 1980. I stopped working in 2020. I worked as a cashier from 2015 to 2020.",
+    });
+    expect(facts.referenceDateKnown).toBe(false);
+    expect(facts.referenceDate).toBe("");
+    expect(facts.age).toBeNull();
+    expect(facts.opinionRule).toBeNull();
+    expect(facts.work[0]?.withinFiveYears).toBeNull();
+  });
+});
+
 describe("determination-date controls", () => {
   it("uses the adjudication date rather than the filing date for age and past-work timing", () => {
     const { facts } = readFacts({
