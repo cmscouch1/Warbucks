@@ -23,7 +23,7 @@ import { BENCH_NOTICE, searchAuthorities } from "./corpus.js";
 import { novelNumbers } from "./draft.js";
 import type { FilingInput } from "./types.js";
 
-const SERVER_INSTRUCTIONS = `Deterministic SSA disability filing bench. filingStrength is not an SSA score. sequential.outcome is what the regulations do with facts the text establishes. Never invent a diagnosis, test, measurement, date, job, or limitation. Before stating a rule, call quote_authority. Before keeping a rewrite, call compare_filings and discard it when novelNumbers or inventedClinicalMarkers is not empty. Do not tell a client they will be approved. If reliable is false, show the audit and do not present the number as a grade. Read ssa://guide.`;
+const SERVER_INSTRUCTIONS = `Deterministic SSA disability filing bench. filingStrength is not an SSA score. sequential.outcome is what the regulations do with facts the text establishes. Never invent a diagnosis, test, measurement, date, job, or limitation. When source documents are available, use grade_complete_record and provide every relevant document in full text with provenance and procedural/work/treatment chronologies; do not reduce the record to a narrative summary. Use grade_filing only for a genuinely narrative-only review. Before stating a rule, call quote_authority. Before keeping a rewrite, call compare_filings and discard it when novelNumbers or inventedClinicalMarkers is not empty. Do not tell a client they will be approved. If reliable is false, show the audit and do not present the number as a grade. Explicitly flag Title II insured-status/DLI, protective-filing, prior-decision, and concurrent-program issues because the current deterministic engine does not adjudicate them. Read ssa://guide.`;
 
 function filingShape(narrative: string) {
   return {
@@ -72,7 +72,7 @@ const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: fa
 
 export function createMcpServer(): McpServer {
   const server = new McpServer(
-    { name: "ssa-filing-bench", version: "1.0.0" },
+    { name: "ssa-filing-bench", version: "1.1.0" },
     { instructions: SERVER_INSTRUCTIONS },
   );
 
