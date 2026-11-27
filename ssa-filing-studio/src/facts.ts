@@ -278,6 +278,8 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   pieces.forEach((piece, index) => {
     const text = piece.text.trim();
     if (!text) return;
+    const intakeTextStart = piece.startOffset + piece.text.length - piece.text.trimStart().length;
+    const intakeTextEnd = intakeTextStart + text.length;
     const documentMarker = /^DOCUMENT\s+(.+)$/i.exec(text);
     if (documentMarker) {
       currentDocumentId = documentMarker[1]?.trim() ?? null;
@@ -341,8 +343,8 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     }
     weighed.push({
       index,
-      intakeTextStart: piece.startOffset,
-      intakeTextEnd: piece.endOffset,
+      intakeTextStart,
+      intakeTextEnd,
       text,
       category: classified.category,
       citation: classified.citation,
