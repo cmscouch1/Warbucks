@@ -73,6 +73,7 @@ function gradeOnce(input: FilingInput): GradeReport {
     factors,
     sentences: facts.sentences,
     opinions: facts.opinions,
+    overrides: facts.overrides,
     draft,
   };
   const reportAudit = audit(input, partial, piecesJoin);

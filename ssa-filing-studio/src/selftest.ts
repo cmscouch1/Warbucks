@@ -115,5 +115,49 @@ Dr. Ortiz examined me and opined that I can lift 10 pounds occasionally, sit for
   expect(!(equals.listing.meets || (equals.sequential.outcome === "disabled" && equals.sequential.decidedAtStep === 3)), equals.sequential.headline, failures, "no-equivalence");
   expect(equals.sequential.steps.some((item) => item.explanation.includes("404.1526")), "Equivalence was not handed back to 20 CFR 404.1526.", failures, "equivalence-citation");
 
+  const sedentaryOpinion = "Dr. Ortiz, an orthopedist who examined me, opined that I can lift 10 pounds occasionally, sit for 6 hours, and stand or walk for 2 hours in an eight-hour workday. He explained this is based on the MRI of the lumbar spine, which showed nerve-root compression, and the reduced range of motion he measured. The impairment is the lumbar spine. It has lasted since 2018, more than twelve months, and it significantly limits sitting.";
+  const cashier = graded(`I am 55 years old. I stopped working in 2024. I have a 9th grade education. I worked as a cashier from 2022 to 2024, lifted 5 pounds, and the work was unskilled. ${sedentaryOpinion}`, { narrative: "", filingDate: "2026-06-01" });
+  expect(cashier.sequential.decidedAtStep !== 4, cashier.sequential.headline, failures, "prw-without-sga-not-step4");
+  expect(cashier.sequential.outcome === "disabled" && cashier.sequential.decidedAtStep === 5, `${cashier.sequential.headline} rule=${cashier.vocational.ruleId}`, failures, "prw-without-sga-grid");
+
+  const cashierSga = graded(`I am 40 years old. I stopped working in 2024. I have a high school education. I worked as a cashier full-time from 2022 to 2024, lifted 5 pounds, and the work was unskilled. ${sedentaryOpinion}`, { narrative: "", filingDate: "2026-06-01" });
+  expect(cashierSga.sequential.decidedAtStep === 4 && cashierSga.sequential.outcome === "not-disabled", cashierSga.sequential.headline, failures, "prw-with-sga-step4");
+
+  const mediumOpinion = "Dr. Ortiz, an orthopedist who examined me, opined that I can lift 50 pounds occasionally and 25 pounds frequently, and stand or walk for 6 hours in an eight-hour workday. He explained this from the MRI of the lumbar spine, which showed nerve-root compression. It has lasted since 2018 and significantly limits lifting.";
+  const mediumSplit = graded(`I am 55 years old. I stopped working in 2019. I have a 9th grade education. The past work was unskilled. ${mediumOpinion}`, { narrative: "", filingDate: "2026-06-01" });
+  expect(mediumSplit.sequential.outcome === "not-determinable" && mediumSplit.vocational.explanation.includes("404.1560"), mediumSplit.vocational.explanation, failures, "unskilled-without-sga-disagrees");
+  const mediumShown = graded(`I am 55 years old. I stopped working in 2019. I have a 9th grade education. The past work was full-time unskilled. ${mediumOpinion}`, { narrative: "", filingDate: "2026-06-01" });
+  expect(mediumShown.sequential.outcome === "not-disabled" && mediumShown.vocational.ruleId === "203.11", `${mediumShown.sequential.headline} rule=${mediumShown.vocational.ruleId}`, failures, "unskilled-sga-shown");
+
+  const borderline = graded(`I stopped working in 2018 and I have not worked since. I have a 9th grade education. The past work was full-time unskilled. ${sedentaryOpinion}`, { narrative: "", filingDate: "2026-06-01", birthDate: "1976-08-15" });
+  expect(borderline.sequential.outcome === "not-disabled" && borderline.vocational.borderline !== null, `${borderline.sequential.headline} borderline=${JSON.stringify(borderline.vocational.borderline)} age-note`, failures, "borderline-flag");
+  expect(borderline.vocational.ruleId === borderline.vocational.borderline?.chronologicalRuleId, borderline.vocational.explanation, failures, "borderline-not-moved");
+
+  const farBirth = graded(`I stopped working in 2018 and I have not worked since. I have a 9th grade education. The past work was full-time unskilled. ${sedentaryOpinion}`, { narrative: "", filingDate: "2026-06-01", birthDate: "1970-01-15" });
+  expect(farBirth.vocational.borderline === null, farBirth.vocational.explanation, failures, "borderline-not-near");
+
+  const integerAge = graded(`I am 49 years old. I stopped working in 2018 and I have not worked since. I have a 9th grade education. The past work was full-time unskilled. ${sedentaryOpinion}`, { narrative: "", filingDate: "2026-06-01" });
+  expect(integerAge.vocational.borderline === null, "An integer age flagged a borderline issue without a birth date.", failures, "borderline-needs-birth-date");
+
+  const childListing = graded("The child is 12 years old. The listings discussed are 12.04 and 112.04. The child has not worked.");
+  expect(childListing.listing.id === "112.04", `Child listing used ${childListing.listing.id}`, failures, "child-part-b-first");
+  const adultListing = graded("I am 40 years old. I stopped working in 2020. The listings discussed are 12.04 and 112.04.");
+  expect(adultListing.listing.id === "12.04", `Adult listing used ${adultListing.listing.id}`, failures, "adult-listing-order");
+
+  const attempt = graded("I am 60. I stopped working in 2024. I had to stop after 3 months because of the impairment. Dr. Ortiz examined me. The MRI of the lumbar spine showed nerve-root compression. It has lasted since 2019 and significantly limits sitting.");
+  const step1 = attempt.sequential.steps.find((item) => item.step === 1);
+  expect(step1?.explanation.includes("404.1574(c)") === true && attempt.sequential.decidedAtStep !== 1, step1?.explanation ?? "missing step 1", failures, "uwa-break-missing");
+
+  const tooYoung = graded("The child is 2 years old. Listing 112.04. The child has not worked.");
+  expect(tooYoung.listing.meets === false && tooYoung.listing.explanation.includes("age group"), tooYoung.listing.explanation, failures, "listing-age-band");
+  const attained = readFacts({ narrative: "I stopped working in 2018. I have a 9th grade education.", filingDate: "2026-08-14", birthDate: "1976-08-15" }).facts;
+  expect(attained.age === 50, `Age on the day before the birthday was ${attained.age}`, failures, "age-day-before-birthday");
+  const overridden = readFacts({ narrative: "I am 40. I stopped working in 2018.", filingDate: "2026-06-01", birthDate: "1976-08-15" }).facts;
+  expect(overridden.age === 49, `Stated age was kept over the birth date: ${overridden.age}`, failures, "birth-date-overrides-stated-age");
+  const overriddenReport = graded("I am 40. I stopped working in 2018.", { narrative: "", filingDate: "2026-06-01", birthDate: "1976-08-15" });
+  expect(overriddenReport.overrides.some((note) => note.includes("birth date")), overriddenReport.overrides.join(" | "), failures, "override-is-reported");
+  const impossible = readFacts({ narrative: "I stopped working in 2018.", filingDate: "2026-06-01", birthDate: "2026-02-31" }).facts;
+  expect(impossible.birthDate === null && impossible.age === null, `Impossible birth date was used: ${impossible.birthDate} age=${impossible.age}`, failures, "impossible-birth-date");
+
   return { passed: failures.length === 0, failures };
 }

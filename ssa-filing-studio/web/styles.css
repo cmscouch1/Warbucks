@@ -147,6 +147,7 @@ textarea { width: 100%; resize: vertical; min-height: 18rem; }
 h2 { font-size: 1.05rem; font-weight: 600; margin: 1.1rem 0 0.3rem; }
 
 .gap { white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.82rem; }
+.callout { border-left: 3px solid #7d2e24; padding: 0.35rem 0.75rem; margin: 0.5rem 0; }
 
 .unreliable { border-color: var(--seal); }
 

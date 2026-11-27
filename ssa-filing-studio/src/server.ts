@@ -65,7 +65,13 @@ function filingFrom(body: Record<string, unknown>): FilingInput {
   const input: FilingInput = { narrative: body.narrative };
   if (body.program === "title-ii" || body.program === "title-xvi") input.program = body.program;
   if (typeof body.filingDate === "string") input.filingDate = body.filingDate;
+  if (typeof body.birthDate === "string") input.birthDate = body.birthDate;
+  if (typeof body.onsetDate === "string") input.onsetDate = body.onsetDate;
   if (typeof body.age === "number") input.age = body.age;
+  if (body.education === "illiterate" || body.education === "marginal" || body.education === "limited" || body.education === "high-school-or-more") {
+    input.education = body.education;
+  }
+  if (typeof body.directEntryToSkilledWork === "boolean") input.directEntryToSkilledWork = body.directEntryToSkilledWork;
   if (typeof body.monthlyEarnings === "number") input.monthlyEarnings = body.monthlyEarnings;
   if (typeof body.earningsYear === "number") input.earningsYear = body.earningsYear;
   if (body.statutoryBlindness === true) input.statutoryBlindness = true;

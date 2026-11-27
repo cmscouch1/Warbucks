@@ -84,22 +84,47 @@ export function sectionText(section: CorpusSection): string {
   return section.paragraphs.join("\n");
 }
 
+let sectionById: Map<string, CorpusSection> | null = null;
+let listingById: Map<string, ListingRecord> | null = null;
+let ruleById: Map<string, GridRule> | null = null;
+let pomsById: Map<string, PomsRecord> | null = null;
+
+function sectionsById(): Map<string, CorpusSection> {
+  if (!sectionById) sectionById = new Map(corpus().sections.map((section) => [section.id, section]));
+  return sectionById;
+}
+
+function listingsById(): Map<string, ListingRecord> {
+  if (!listingById) listingById = new Map(corpus().listings.map((listing) => [listing.id, listing]));
+  return listingById;
+}
+
+function rulesById(): Map<string, GridRule> {
+  if (!ruleById) ruleById = new Map(corpus().grids.rules.map((rule) => [rule.id, rule]));
+  return ruleById;
+}
+
+function pomsIndex(): Map<string, PomsRecord> {
+  if (!pomsById) pomsById = new Map(corpus().poms.map((record) => [record.id.toUpperCase(), record]));
+  return pomsById;
+}
+
 export function findSection(citation: string): CorpusSection | undefined {
   const id = citation.replace(/^20\s*CFR\s*/i, "").trim().replace(/\(.*$/, "");
-  return corpus().sections.find((section) => section.id === id);
+  return sectionsById().get(id);
 }
 
 export function findPoms(id: string): PomsRecord | undefined {
   const wanted = id.replace(/\s+/g, " ").trim().toUpperCase();
-  return corpus().poms.find((record) => record.id.toUpperCase() === wanted);
+  return pomsIndex().get(wanted);
 }
 
 export function findListing(id: string): ListingRecord | undefined {
-  return corpus().listings.find((listing) => listing.id === id);
+  return listingsById().get(id);
 }
 
 export function gridRule(id: string): GridRule | undefined {
-  return corpus().grids.rules.find((rule) => rule.id === id);
+  return rulesById().get(id);
 }
 
 export function gridRules(): GridRule[] {
@@ -181,27 +206,44 @@ export interface SearchHit {
   paragraph: string;
 }
 
+interface IndexedParagraph {
+  citation: string;
+  paragraph: string;
+  lower: string;
+}
+
+let searchIndex: IndexedParagraph[] | null = null;
+
+function authorityIndex(): IndexedParagraph[] {
+  if (searchIndex) return searchIndex;
+  const rows: IndexedParagraph[] = [];
+  const add = (citation: string, paragraph: string) => {
+    rows.push({ citation, paragraph, lower: paragraph.toLowerCase() });
+  };
+  for (const section of corpus().sections) {
+    for (const paragraph of section.paragraphs) add(section.citation, paragraph);
+  }
+  for (const paragraph of corpus().grids.prose) add("Appendix 2", paragraph);
+  for (const listing of corpus().listings) {
+    for (const paragraph of listing.paragraphs) add(`listing ${listing.id}`, paragraph);
+  }
+  for (const record of corpus().poms) {
+    for (const paragraph of record.paragraphs) add(record.id, paragraph);
+  }
+  searchIndex = rows;
+  return rows;
+}
+
 export function searchAuthorities(query: string, limit = 12): SearchHit[] {
   const needle = query.trim().toLowerCase();
   if (needle.length < 3) return [];
   const hits: SearchHit[] = [];
-  const consider = (citation: string, paragraph: string) => {
-    if (hits.length >= limit) return;
-    if (paragraph.toLowerCase().includes(needle)) hits.push({ citation, paragraph });
-  };
-  for (const section of corpus().sections) {
-    for (const paragraph of section.paragraphs) consider(section.citation, paragraph);
-  }
-  for (const paragraph of corpus().grids.prose) consider("Appendix 2", paragraph);
-  for (const listing of corpus().listings) {
-    for (const paragraph of listing.paragraphs) consider(`listing ${listing.id}`, paragraph);
+  for (const row of authorityIndex()) {
+    if (!row.lower.includes(needle)) continue;
+    hits.push({ citation: row.citation, paragraph: row.paragraph });
     if (hits.length >= limit) break;
   }
-  for (const record of corpus().poms) {
-    for (const paragraph of record.paragraphs) consider(record.id, paragraph);
-    if (hits.length >= limit) break;
-  }
-  return hits.slice(0, limit);
+  return hits;
 }
 
 export function authorityContains(citation: string, phrase: string): boolean {

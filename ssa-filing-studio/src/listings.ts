@@ -42,6 +42,16 @@ interface LetterBlock {
   groups: Group[];
 }
 
+const letterCache = new Map<string, { logic: string | null; letters: LetterBlock[] }>();
+
+function cachedLetters(id: string, paragraphs: string[]): { logic: string | null; letters: LetterBlock[] } {
+  const hit = letterCache.get(id);
+  if (hit) return hit;
+  const parsed = parseLetters(paragraphs);
+  letterCache.set(id, parsed);
+  return parsed;
+}
+
 function parseLetters(paragraphs: string[]): { logic: string | null; letters: LetterBlock[] } {
   const logic = /satisfied by ([^:]+)/i.exec(paragraphs[0] ?? "")?.[1]?.trim() ?? null;
   const letters: LetterBlock[] = [];
@@ -118,8 +128,25 @@ function paragraphB(block: LetterBlock, medical: WeighedSentence[]): { met: bool
   return { met: standard && (extremes >= 1 || markeds >= 2), elements };
 }
 
+function listingAgeFits(title: string, age: number | null): boolean {
+  if (age === null) return true;
+  const fromBirth = /from birth to attainment of age (\d+)/i.exec(title);
+  if (fromBirth?.[1] && age >= Number(fromBirth[1])) return false;
+  const range = /age (\d+) to attainment of age (\d+)/i.exec(title);
+  if (range?.[1] && range[2] && (age < Number(range[1]) || age >= Number(range[2]))) return false;
+  return true;
+}
+
+function applicableListingId(facts: Facts): string | null {
+  const fitting = facts.listingIds.find((candidate) => {
+    const record = findListing(candidate);
+    return record !== undefined && listingAgeFits(record.title, facts.age);
+  });
+  return fitting ?? facts.listingIds[0] ?? null;
+}
+
 export function evaluateListing(facts: Facts): ListingResult {
-  const id = facts.listingIds[0] ?? null;
+  const id = applicableListingId(facts);
   if (!id) {
     return {
       id: null,
@@ -135,6 +162,20 @@ export function evaluateListing(facts: Facts): ListingResult {
     };
   }
   const record = findListing(id);
+  if (record && !listingAgeFits(record.title, facts.age)) {
+    return {
+      id,
+      inCorpus: true,
+      testedPath: false,
+      meets: false,
+      path: null,
+      explanation: `Listing ${id} is limited by its title to an age group this person is outside. The title says: ${record.title}. This bench will not find that the listing is met.`,
+      criteria: "",
+      lettersAddressed: 0,
+      lettersTotal: 0,
+      elements: [],
+    };
+  }
   if (!record) {
     return {
       id,
@@ -149,7 +190,7 @@ export function evaluateListing(facts: Facts): ListingResult {
       elements: [],
     };
   }
-  const parsed = parseLetters(record.paragraphs);
+  const parsed = cachedLetters(id, record.paragraphs);
   const medical = medicalSentences(facts);
   const letterMet: Record<string, boolean> = {};
   const elements: ListingElement[] = [];
@@ -185,7 +226,7 @@ export function evaluateListing(facts: Facts): ListingResult {
     if (any) lettersAddressed += 1;
   }
   const decision = logicMet(parsed.logic, letterMet);
-  const criteria = record.paragraphs.join("\n");
+  const criteria = decision ? "" : record.paragraphs.join("\n");
   if (!decision) {
     return {
       id,

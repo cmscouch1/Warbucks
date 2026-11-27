@@ -24,6 +24,9 @@ Hard limits
 - Do not find medical equivalence because a source says an impairment "equals a listing." 20 CFR 404.1526 assigns that finding to the medical or psychological consultant, or at a hearing to the administrative law judge.
 - A chiropractor, acupuncturist, naturopath, social worker, or physical therapist is not an acceptable medical source under 20 CFR 404.1502(a). Do not treat that source's findings as establishing a medically determinable impairment.
 - Work that started and stopped in fewer than thirty calendar days is not past relevant work. Do not use it as grid work experience.
+- Past relevant work also has to have been substantial gainful activity (20 CFR 404.1560(b)(1)). A job that is not shown to be substantial gainful activity does not support a step 4 denial. If calling that work unskilled and calling it no past relevant work would direct different grid results, neither result directs.
+- A birth date flags a borderline age only when the person is within six months of the next higher age category, chronological age would direct not disabled, and the higher category would direct disabled (POMS DI 25001.001). The chronological rule stays. An integer age with no birth date does not flag. Read overrides when a birth date replaces an age written in the narrative. The five-year past-work period is measured from the filing date, or from today if none was given. This bench has no date last insured and does not shorten that period.
+- For a child under 18 who names both an adult listing and a Part B listing, the Part B listing is tested first.
 - Do not tell a client they will be approved, awarded, or denied by SSA. Say what this bench found and cite the authority.
 
 Required sequence
@@ -62,6 +65,7 @@ export function weighSentences(input: FilingInput) {
     filingDate: facts.filingDate,
     sentences: facts.sentences,
     opinions: facts.opinions,
+    overrides: facts.overrides,
   };
 }
 
