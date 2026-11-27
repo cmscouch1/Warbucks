@@ -1,6 +1,7 @@
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { resolve } from "node:path";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
@@ -90,6 +91,74 @@ function json(value: unknown) {
 function failure(error: unknown) {
   const message = error instanceof Error ? error.message : "The bench could not complete that call.";
   return { isError: true as const, content: [{ type: "text" as const, text: message }] };
+}
+
+const OFFICIAL_AUTHORITY_HOSTS = new Set([
+  "www.ecfr.gov", "ecfr.gov", "www.ssa.gov", "ssa.gov", "secure.ssa.gov",
+  "uscode.house.gov", "www.govinfo.gov", "www.federalregister.gov",
+  "federalregister.gov", "www.ca3.uscourts.gov", "ca3.uscourts.gov",
+  "www.supremecourt.gov",
+]);
+
+function extractAuthorityText(source: string, contentType: string): string {
+  if (/json/i.test(contentType)) {
+    try { return JSON.stringify(JSON.parse(source), null, 2); } catch { return source; }
+  }
+  let value = source
+    .replace(/<script\\b[^>]*>[\\s\\S]*?<\\/script>/gi, " ")
+    .replace(/<style\\b[^>]*>[\\s\\S]*?<\\/style>/gi, " ")
+    .replace(/<\\/(?:p|div|section|article|h[1-6]|li|tr|table|title)>/gi, "\\n")
+    .replace(/<br\\s*\\/?\\s*>/gi, "\\n")
+    .replace(/<[^>]+>/g, " ");
+  value = value.replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">").replace(/&quot;/gi, '"').replace(/&#39;|&apos;/gi, "'");
+  value = value.replace(/&#(\\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => String.fromCodePoint(parseInt(n, 16)));
+  return value.split(/\\r?\\n/).map((line) => line.replace(/\\s+/g, " ").trim()).filter(Boolean).join("\\n");
+}
+
+async function fetchOfficialAuthority(urlText: string) {
+  let url: URL;
+  try { url = new URL(urlText); } catch { throw new Error("Provide a valid official authority URL."); }
+  if (url.protocol !== "https:" || !OFFICIAL_AUTHORITY_HOSTS.has(url.hostname.toLowerCase())) {
+    throw new Error("Only HTTPS URLs on the allowlisted official government authority domains are permitted.");
+  }
+  let response: Response | null = null;
+  let current = url;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    response = await fetch(current, {
+      redirect: "manual",
+      headers: { "User-Agent": "SSA-Filing-Bench/1.1 (official authority retrieval)", "Accept": "text/html,application/xml,text/xml,application/json,*/*" },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (!location) throw new Error("Official source returned a redirect without a location.");
+      const next = new URL(location, current);
+      if (next.protocol !== "https:" || !OFFICIAL_AUTHORITY_HOSTS.has(next.hostname.toLowerCase())) {
+        throw new Error("Official source redirected outside the allowlisted government domains; retrieval stopped.");
+      }
+      current = next;
+      continue;
+    }
+    break;
+  }
+  if (!response || response.status >= 300) throw new Error("Too many redirects while retrieving the official authority.");
+  if (!response.ok) throw new Error("Official authority request failed with HTTP " + response.status + ".");
+  const contentType = response.headers.get("content-type") ?? "unknown";
+  const raw = await response.text();
+  const text = extractAuthorityText(raw, contentType);
+  return {
+    requestedUrl: url.href,
+    finalUrl: current.href,
+    retrievedAt: new Date().toISOString(),
+    httpStatus: response.status,
+    contentType,
+    sourceSha256: createHash("sha256").update(raw, "utf8").digest("hex"),
+    characterCount: text.length,
+    text,
+    limitation: "Retrieved official source content is not itself a legal conclusion. Verify effective date, amendment/supersession status, applicability, and controlling precedent before applying it.",
+  };
 }
 
 const readOnly = { readOnlyHint: true, destructiveHint: false, openWorldHint: false };
@@ -465,6 +534,22 @@ export function createMcpServer(): McpServer {
       testFailures: args.testFailures,
       limitation: "This gate checks completeness of supplied audit attestations. It cannot independently establish that source documents, legal research, or agent conclusions are correct. A reviewer must verify the underlying artifacts.",
     });
+  });
+
+  server.registerTool("fetch_official_authority", {
+    title: "Fetch current official SSA legal authority",
+    description: "Retrieve full text from allowlisted official government sources: eCFR, SSA rulings/POMS/HALLEX, U.S. Code House, Federal Register, GovInfo, Third Circuit, and Supreme Court. Use exact official URLs from the legal framework or verified research. Returns retrieval date, final URL, SHA-256, and extracted text. Never treat retrieval alone as an applicability or legal conclusion.",
+    inputSchema: {
+      url: z.string().url().describe("Exact HTTPS URL on an allowlisted official government domain."),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: true },
+  }, async ({ url }) => {
+    try {
+      const result = await fetchOfficialAuthority(url);
+      return json(result);
+    } catch (error) {
+      return failure(error);
+    }
   });
 
   server.registerTool("get_legal_framework", {
