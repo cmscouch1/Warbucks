@@ -267,6 +267,7 @@ export function createMcpServer(): McpServer {
       actualFilingDate: z.string().optional().describe("Actual application submission/filing date, if verified."),
       priorDecisionDate: z.string().optional().describe("Date of any prior SSA decision."),
       program: z.enum(["title-ii", "title-xvi"]).optional(),
+      concurrentPrograms: z.boolean().optional().describe("True when both Title II and Title XVI are being pursued. The engine does not determine separate nonmedical entitlement requirements."),
       filingDate: z.string().optional().describe("Date used for the current application/rule selection only when established."),
       age: z.number().int().optional(),
       birthDate: z.string().optional(),
@@ -327,10 +328,19 @@ export function createMcpServer(): McpServer {
         onsetDate: args.onsetDate,
       });
       const report = gradeForModel(filing);
-      const unsupported = [];
-      if (args.dateLastInsured) unsupported.push("Date last insured supplied but not adjudicated by the current engine; independently analyze Title II insured status and onset before/through the DLI.");
+      const unsupported: string[] = [];
+      if (args.program === "title-ii" || args.concurrentPrograms) {
+        unsupported.push(args.dateLastInsured
+          ? "Date last insured supplied but not adjudicated by the current engine; independently verify insured status/quarters and onset before or through the DLI."
+          : "Title II is selected but no verified date-last-insured/insured-status determination was supplied; obtain the SSA earnings/insured-status record and analyze onset against the DLI.");
+      }
+      if (args.program === "title-xvi" || args.concurrentPrograms) {
+        unsupported.push("Title XVI nonmedical eligibility (income, resources, living arrangements, and applicable exclusions) is not adjudicated by the disability engine and requires a separate determination.");
+      }
       if (args.protectiveFilingDate || args.actualFilingDate) unsupported.push("Protective filing and actual submission dates are preserved in the intake manifest but not reconciled by the current engine; distinguish protective filing, application completion, submission, and SSA receipt.");
-      if (args.priorDecisionDate) unsupported.push("Prior decision supplied but not analyzed for administrative res judicata, reopening, prior findings, or changed circumstances by the current engine.");
+      else unsupported.push("No verified protective-filing/application-submission/SSA-receipt chronology was supplied; establish each date separately where applicable.");
+      const priorDecisionDocument = args.documents.some((doc) => /prior.*decision|ALJ decision|administrative law judge decision|appeals council/i.test(doc.documentType + " " + doc.title));
+      if (args.priorDecisionDate || priorDecisionDocument) unsupported.push("Prior decision supplied or identified but not analyzed for administrative res judicata, reopening, prior findings, changed circumstances, or the effect of the prior adjudicated period by the current engine.");
       if (!args.program) unsupported.push("Program/title not specified; do not assume Title II, Title XVI, or concurrent eligibility.");
       return json({
         recordIntake: {
@@ -363,6 +373,7 @@ export function createMcpServer(): McpServer {
             protectiveFilingDate: args.protectiveFilingDate ?? null,
             actualFilingDate: args.actualFilingDate ?? null,
             priorDecisionDate: args.priorDecisionDate ?? null,
+            concurrentPrograms: args.concurrentPrograms ?? false,
           },
         },
         requiredAgentReview: unsupported,
