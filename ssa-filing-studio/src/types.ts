@@ -46,6 +46,9 @@ export interface FilingInput {
 
 export interface WeighedSentence {
   index: number;
+  /** Character offsets in the exact intake narrative passed to the parser; end is exclusive. */
+  intakeTextStart: number;
+  intakeTextEnd: number;
   text: string;
   category: EvidenceCategory;
   citation: string;
