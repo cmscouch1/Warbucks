@@ -167,7 +167,7 @@ export function evaluateSequential(facts: Facts, listing: ListingResult): { sequ
       reached: true,
       outcome: "not-determinable",
       citation: "20 CFR 404.1521",
-      explanation: "A medically determinable impairment must be shown by objective medical evidence — signs, laboratory findings, or both — from an acceptable medical source. A symptom, a diagnosis, or a medical opinion does not establish it. The missing evidence is a development problem under 20 CFR 404.1520b, not a finding of not disabled.",
+      explanation: `A medically determinable impairment must be shown by objective medical evidence — signs, laboratory findings, or both — from an acceptable medical source. A symptom, a diagnosis, or a medical opinion does not establish it. The missing evidence is a development problem under 20 CFR 404.1520b, not a finding of not disabled.${facts.equivalenceAlleged ? " A statement that an impairment equals a listing does not establish medical equivalence. 20 CFR 404.1526 assigns that finding to the state-agency medical or psychological consultant, or at a hearing to the administrative law judge. This bench does not make it." : ""}`,
     }));
     return {
       sequential: finish("not-determinable", 2, "Not determinable at step 2. Objective medical evidence from an acceptable medical source is missing, so no medically determinable impairment is established. 20 CFR 404.1521.", steps),
@@ -197,13 +197,16 @@ export function evaluateSequential(facts: Facts, listing: ListingResult): { sequ
     return { sequential: finish("not-disabled", 2, "Not disabled at step 2. The impairment is not described as severe. 20 CFR 404.1520(c).", steps), vocational: blankVocational() };
   }
   if (facts.severe !== "yes" || facts.duration !== "met") {
-    const missing = facts.severe !== "yes" ? "whether a basic work activity is significantly limited" : "whether the impairment has lasted or is expected to last at least 12 months";
+    const missing = facts.mildCombinationOpen
+      ? "whether the combined effect of the mild impairments significantly limits a basic work activity"
+      : facts.severe !== "yes" ? "whether a basic work activity is significantly limited" : "whether the impairment has lasted or is expected to last at least 12 months";
+    const citation = facts.mildCombinationOpen ? "20 CFR 404.1523" : "20 CFR 404.1520(c)";
     steps.push(step({
       step: 2,
       title: "Severe medically determinable impairment",
       reached: true,
       outcome: "not-determinable",
-      citation: "20 CFR 404.1520(c)",
+      citation,
       explanation: `Objective medical evidence is present. The filing still does not establish ${missing}.`,
     }));
     return { sequential: finish("not-determinable", 2, `Not determinable at step 2. The record does not establish ${missing}.`, steps), vocational: blankVocational() };
@@ -258,7 +261,9 @@ export function evaluateSequential(facts: Facts, listing: ListingResult): { sequ
     reached: true,
     outcome: "continue",
     citation: "20 CFR 404.1525",
-    explanation: listing.explanation,
+    explanation: facts.equivalenceAlleged
+      ? `${listing.explanation} The filing says an impairment equals a listing. That statement does not establish medical equivalence. 20 CFR 404.1526 assigns the equivalence finding to the state-agency medical or psychological consultant, or at a hearing to the administrative law judge. This bench does not make it.`
+      : listing.explanation,
   }));
 
   const profileHit = medicalVocationalProfile(facts);

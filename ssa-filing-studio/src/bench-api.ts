@@ -21,6 +21,9 @@ Hard limits
 - A statement that the person is "disabled," "unable to work," or "limited to sedentary work," with no pounds and no hours, is a reserved issue on claims filed on or after March 27, 2017 (20 CFR 404.1520b(c)(3)). It is not a medical opinion and it does not set residual functional capacity.
 - "Legally blind" is not statutory blindness. Title XVI statutory blindness is not a step-1 denial for earnings (20 CFR 416.984).
 - Earnings equal to the yearly substantial-gainful-activity amount are not substantial gainful activity. The regulation uses "more than."
+- Do not find medical equivalence because a source says an impairment "equals a listing." 20 CFR 404.1526 assigns that finding to the medical or psychological consultant, or at a hearing to the administrative law judge.
+- A chiropractor, acupuncturist, naturopath, social worker, or physical therapist is not an acceptable medical source under 20 CFR 404.1502(a). Do not treat that source's findings as establishing a medically determinable impairment.
+- Work that started and stopped in fewer than thirty calendar days is not past relevant work. Do not use it as grid work experience.
 - Do not tell a client they will be approved, awarded, or denied by SSA. Say what this bench found and cite the authority.
 
 Required sequence

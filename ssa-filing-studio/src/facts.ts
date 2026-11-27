@@ -17,7 +17,11 @@ const OBJECTIVE =
   /\b(mri|ct scan|cat scan|x-ray|xray|radiograph|emg|nerve conduction|eeg|ecg|ekg|spirometry|fev\s?1|a1c|hemoglobin a1c|ejection fraction|laboratory|blood test|biopsy|range of motion|straight[- ]leg|phq-9|gad-7|wais|wisc|full[- ]scale iq|mental status examination|on examination|imaging (?:showed|shows|revealed|demonstrated))\b/i;
 
 const MEDICAL_SOURCE =
-  /\b(dr\.?|doctor|physician|psychiatrist|psychologist|rheumatologist|neurologist|orthoped(?:ic|ist)|cardiologist|pulmonologist|oncologist|surgeon|nurse practitioner|\bnp\b|aprn|physician assistant|pa-c|podiatrist|optometrist|audiologist)\b/i;
+  /\b(dr\.?|doctor|physician|psychiatrist|psychologist|rheumatologist|neurologist|orthoped(?:ic|ist)|cardiologist|pulmonologist|oncologist|surgeon|nurse practitioner|\bnp\b|aprn|physician assistant|pa-c|podiatrist|optometrist|audiologist|pediatrician)\b/i;
+
+/** 20 CFR 404.1502(a) does not list these practitioners. "Dr." in front of the name does not make them an acceptable medical source. */
+const NOT_ACCEPTABLE_SOURCE =
+  /\b(chiropract(?:or|ic)|acupuncturist|naturopath|homeopath|licensed clinical social worker|\blcsw\b|physical therapist|massage therapist)\b/i;
 
 const FUNCTION_WORD =
   /\b(sit(?:ting)?|stand(?:ing)?|walk(?:ing)?|lift(?:ing)?|carry(?:ing)?|reach(?:ing)?|handl(?:e|ing)|stoop(?:ing)?|crouch(?:ing)?|kneel(?:ing)?|crawl(?:ing)?|climb(?:ing)?|concentrat(?:e|ing|ion)|persist(?:ence|ing)?|pace|interact(?:ing)?|remember(?:ing)?|understand(?:ing)?|adapt(?:ing)?|off[- ]task|absen(?:t|ces))\b/i;
@@ -220,17 +224,25 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   const pieces = splitSentences(narrative);
   const weighed: WeighedSentence[] = [];
   let carried: string | null = null;
+  let carriedNonAms = false;
   pieces.forEach((piece, index) => {
     const text = piece.text.trim();
     if (!text) return;
     const named = sourceName(text);
-    if (named) carried = named;
+    if (named) {
+      carried = named;
+      carriedNonAms = NOT_ACCEPTABLE_SOURCE.test(text);
+    } else if (NOT_ACCEPTABLE_SOURCE.test(text)) {
+      carriedNonAms = true;
+    }
     const continuesMedical =
       /^(she|he|the doctor|the psychiatrist)\b/i.test(text) ||
       OBJECTIVE.test(text) ||
       /\b(opined|opinion|explained|examination|observed)\b/i.test(text);
     const usedSource = named ?? (continuesMedical ? carried : null);
-    const classified = classify(text, usedSource);
+    const fromNonAms = NOT_ACCEPTABLE_SOURCE.test(text) || (usedSource !== null && usedSource === carried && carriedNonAms);
+    const classified = classify(text, fromNonAms ? null : usedSource);
+    if (fromNonAms) classified.tags.push("non-ams");
     const reservedWhy = reservedHit(text);
     const incompetent: string[] = [];
     if (classified.category === "nonmedical") {
@@ -239,6 +251,9 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     }
     if (classified.category === "other-medical") {
       incompetent.push("A diagnosis or treatment note is not objective medical evidence and does not establish an impairment (20 CFR 404.1521).");
+    }
+    if (fromNonAms) {
+      incompetent.push("This source is not an acceptable medical source under 20 CFR 404.1502(a). Findings from that source do not establish a medically determinable impairment (20 CFR 404.1521).");
     }
     if (reservedWhy) {
       incompetent.push(reservedWhy);
@@ -314,6 +329,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   let workingNow: boolean | null = stopped && !workingWords ? false : workingWords && !stopped ? true : stopped && workingWords ? null : null;
   if (monthlyEarnings !== null && monthlyEarnings > 0 && workingNow === null && !stopped) workingNow = true;
   if (/\bnever worked\b|\bno (?:past )?work experience\b/i.test(textAll)) workingNow = false;
+  if (workingNow === null && age !== null && age < 18 && monthlyEarnings === null && !/\b(employ|job|earn|wage)\b/i.test(textAll)) workingNow = false;
 
   const selfEmployed = input.selfEmployed === true || /\bself[- ]employed\b|\bmy business\b/i.test(textAll);
   const statutoryBlindness = input.statutoryBlindness === true || /\bstatutor(?:y|ily) blind/i.test(textAll);
@@ -338,24 +354,28 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   if (/\b(expected to result in death|terminal|end of life)\b/i.test(textAll)) duration = "met";
   else if (yearsSinceOnset !== null && yearsSinceOnset >= 1) duration = "met";
   else if (/\b(at least (?:12|twelve) months|for (?:12|twelve) months|for (?:two|2) years|for years)\b/i.test(textAll)) duration = "met";
-  else if (/\b(resolved|recovered)\b/i.test(textAll) && /\b([1-9]|ten|eleven)\s+months?\b/i.test(textAll)) duration = "not-met";
-  else if (/\bfor ([1-9]|three|four|five|six)\s+months?\b/i.test(textAll) && !/\b(12|twelve) months\b/i.test(textAll)) duration = "not-met";
+  else if (/\b(resolved|recovered|ended after|lasted only|only lasted)\b/i.test(textAll) && /\b([1-9]|ten|eleven|three|four|five|six)\s+months?\b/i.test(textAll) && !/\b(12|twelve) months\b/i.test(textAll)) duration = "not-met";
 
-  const amsNamed = weighed.some((sentence) => MEDICAL_SOURCE.test(sentence.text) && sentence.category !== "nonmedical");
-  const objectiveFinding = weighed.some((sentence) => sentence.category === "objective-medical");
+  const amsNamed = weighed.some((sentence) => MEDICAL_SOURCE.test(sentence.text) && sentence.category !== "nonmedical" && !sentence.tags.includes("non-ams"));
+  const objectiveFinding = weighed.some((sentence) => sentence.category === "objective-medical" && !sentence.tags.includes("non-ams"));
   const objectiveTied = objectiveFinding && /\b(back|spine|lumbar|cervical|knee|hip|shoulder|heart|lung|depression|anxiety|ptsd|bipolar|diabetes|seizure)\b/i.test(textAll);
   const diagnosisCount = weighed.filter((sentence) => /\bdiagnos/i.test(sentence.text) || sentence.category === "other-medical").length;
   const combinationAddressed = /\b(combination|combined effect|together)\b/i.test(textAll);
 
   const significant = /\b(cannot|can't|unable|marked limitation|extreme limitation|significantly limits|difficulty)\b/i.test(textAll);
   const onlyMild = /\b(mild|slight|minimal)\b/i.test(textAll) && !significant;
-  const severe: Facts["severe"] = significant ? "yes" : onlyMild ? "no" : "unknown";
+  const multipleImpairments = diagnosisCount >= 2 || /\b(both|two|multiple|several) impairments\b/i.test(textAll);
+  const mildCombinationOpen = onlyMild && multipleImpairments && !combinationAddressed;
+  const severe: Facts["severe"] = significant ? "yes" : onlyMild && !mildCombinationOpen ? "no" : "unknown";
 
-  const listingIds = [...new Set(
+  const foundListingIds = [...new Set(
     [...textAll.matchAll(/\b(\d{1,3}\.\d{2})\b/g)]
       .map((match) => match[1] ?? "")
       .filter((id) => id && findListing(id)),
   )];
+  const withCriteria = foundListingIds.filter((id) => findListing(id)?.paragraphs.some((paragraph) => /satisfied by/i.test(paragraph)) ?? false);
+  const listingIds = [...withCriteria, ...foundListingIds.filter((id) => !withCriteria.includes(id))];
+  const equivalenceAlleged = /\b(medically equals|medical equivalence|equals (?:a |the )?listing)\b/i.test(textAll);
 
   const bySource = new Map<string, WeighedSentence[]>();
   for (const sentence of weighed) {
@@ -374,6 +394,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     const functional = opinionSentences.filter((sentence) => sentence.tags.includes("function") && !isReservedOnly(sentence.text));
     const limits = functional.flatMap((sentence) => limitsIn(sentence.text, sentence.index));
     const reservedOnly = opinionSentences.length > 0 && functional.length === 0 && opinionSentences.every((sentence) => sentence.reservedIssue);
+    if (sentences.every((sentence) => sentence.tags.includes("non-ams"))) continue;
     if (functional.length === 0 && !reservedOnly) continue;
     opinions.push({
       name,
@@ -455,8 +476,10 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     objectiveTied,
     diagnosisCount,
     combinationAddressed,
+    mildCombinationOpen,
     severe,
     listingIds,
+    equivalenceAlleged,
     opinions,
     medicalConflict,
     nonmedicalConflict,
@@ -637,15 +660,30 @@ function readWork(sentences: WeighedSentence[], referenceDate: string): WorkFact
   return jobs;
 }
 
+function onlyBriefWork(text: string): boolean {
+  const sentences = text.split(/\n|(?<=\.)\s+/);
+  const briefSentence = (sentence: string) => {
+    if (!/\b(?:job|work|employment)\b/i.test(sentence)) return false;
+    const day = /\blasted\s+(\d{1,3})\s+days?\b/i.exec(sentence);
+    return day?.[1] !== undefined && Number(day[1]) < 30;
+  };
+  if (!sentences.some(briefSentence)) return false;
+  const longerWork = sentences.some((sentence) => /\b(20\d{2})\b[^\d]{0,20}\b(20\d{2})\b/.test(sentence) || (/\b(?:job|work)\b/i.test(sentence) && /\bunskilled\b/i.test(sentence) && !briefSentence(sentence)));
+  return !longerWork;
+}
+
 function experienceOf(work: WorkFact[], neverWorked: boolean, text: string): ExperienceKind | null {
   if (neverWorked || (work.length === 0 && /\bno past relevant work\b/i.test(text))) return "none";
   if (/\bskills? (?:are |were )?not transferable\b|\bno transferable skills\b/i.test(text)) return "not-transferable";
   if (/\bskills? (?:are |were )?transferable\b/i.test(text) && !/\bnot transferable\b/i.test(text)) return "transferable";
-  if (work.some((job) => job.skill === "skilled" || job.skill === "semiskilled") || /\bskilled work\b/i.test(text)) {
+  const durable = work.filter((job) => !job.underThirtyDays);
+  const skillText = text.replace(/direct entry into skilled work/gi, "");
+  if (durable.some((job) => job.skill === "skilled" || job.skill === "semiskilled") || (/\bskilled work\b/i.test(skillText) && !onlyBriefWork(skillText))) {
     return null;
   }
-  if (work.some((job) => job.skill === "unskilled") || /\bunskilled\b/i.test(text)) return "unskilled";
-  if (neverWorked) return "none";
+  if (durable.some((job) => job.skill === "unskilled")) return "unskilled";
+  if (onlyBriefWork(skillText) || (work.length > 0 && durable.length === 0)) return "none";
+  if (/\bunskilled\b/i.test(skillText)) return "unskilled";
   return null;
 }
 

@@ -1,4 +1,5 @@
 import { gradeFiling } from "./grade.js";
+import { readFacts } from "./facts.js";
 import { applyVocational } from "./grids.js";
 import { gridRule } from "./corpus.js";
 import { joinSentences, splitSentences } from "./sentences.js";
@@ -81,6 +82,38 @@ Dr. Ortiz examined me and opined that I can sit for 4 hours and lift 10 pounds o
   expect(oldRule.reliable, oldRule.audit.checks.filter((check) => !check.passed).map((check) => `${check.id}: ${check.detail}`).join(" | "), failures, "pre-2017-audit");
   const supportability = oldRule.factors.find((factor) => factor.id === "supportability");
   expect(supportability?.citation.includes("404.1527") === true, supportability?.citation ?? "missing", failures, "pre-2017-rule");
+
+  const briefNarrative = `I am 55 years old. I stopped working in 2024. I have a 9th grade education. My only job lasted 10 days and was unskilled.
+Dr. Ortiz, an orthopedist who examined me, opined that I can lift 50 pounds occasionally and 25 pounds frequently, and stand or walk for 6 hours in an eight-hour workday. He explained this from the MRI of the lumbar spine, which showed nerve-root compression. It has lasted since 2018 and significantly limits lifting.`;
+  const briefJob = graded(briefNarrative, { narrative: "", filingDate: "2026-06-01" });
+  const briefFacts = readFacts({ narrative: briefNarrative, filingDate: "2026-06-01" }).facts;
+  expect(briefFacts.experience === "none", `A 10-day job was treated as work experience: ${briefFacts.experience}`, failures, "brief-work-experience");
+  expect(briefJob.sequential.outcome === "disabled" && briefJob.vocational.ruleId !== "203.11", `${briefJob.sequential.headline} rule=${briefJob.vocational.ruleId}`, failures, "brief-work-grid");
+  expect(briefJob.sequential.headline.includes("404.1562(b)") || briefJob.vocational.ruleId === "203.10", briefJob.sequential.headline, failures, "brief-work-authority");
+
+  const flare = readFacts({ narrative: "I am 55. I stopped working in 2019. The past work was unskilled warehouse work from 2005 to 2019. A headache lasted 10 days. I have a 9th grade education." }).facts;
+  expect(flare.experience === "unskilled", `A short symptom wiped out work experience: ${flare.experience}`, failures, "flare-not-brief-work");
+
+  const entryNarrative = `I am 55 years old. I stopped working in 2019. I have a high school education that does not provide for direct entry into skilled work. The past work was unskilled.
+Dr. Ortiz examined me and opined that I can lift 10 pounds occasionally, sit for 6 hours, and stand or walk for 2 hours in an eight-hour workday. He explained the MRI of the lumbar spine showed nerve-root compression. This has lasted since 2018 and significantly limits sitting.`;
+  const entryFacts = readFacts({ narrative: entryNarrative }).facts;
+  expect(entryFacts.experience === "unskilled" && entryFacts.directEntry === false, `experience=${entryFacts.experience} directEntry=${String(entryFacts.directEntry)}`, failures, "direct-entry-not-skill");
+
+  const chiro = readFacts({ narrative: "I am 60. I stopped working in 2022. Dr. Bones, a chiropractor, examined me. The x-ray of the lumbar spine showed degeneration. It has lasted since 2020 and significantly limits sitting." }).facts;
+  expect(chiro.amsNamed === false && chiro.objectiveFinding === false, `ams=${chiro.amsNamed} objective=${chiro.objectiveFinding}`, failures, "chiropractor-not-ams");
+
+  const mild = graded("I am 60. I stopped working in 2020. Dr. Ortiz examined me. The MRI of the lumbar spine showed degeneration and the x-ray of the knee showed narrowing. Both impairments are mild. I have had them since 2019.");
+  expect(mild.sequential.outcome !== "not-disabled", mild.sequential.headline, failures, "two-mild-combination");
+
+  const therapy = readFacts({ narrative: "I am 60. I stopped working in 2024. Dr. Ortiz examined me. The MRI of the lumbar spine showed nerve-root compression. I attended physical therapy for 6 months. It significantly limits sitting." }).facts;
+  expect(therapy.duration !== "not-met", `Treatment length was treated as the duration of the impairment: ${therapy.duration}`, failures, "therapy-months");
+
+  const child = graded("The child is 10 years old and has not attended school since 2023. Dr. Patel, a pediatrician who examined the child, recorded an extreme limitation in acquiring and using information on examination. She explained the finding. It has lasted for two years.");
+  expect(child.sequential.outcome === "disabled" && child.vocational.ruleId === null, `${child.sequential.headline} rule=${child.vocational.ruleId}`, failures, "child-domain");
+
+  const equals = graded("I am 50. I stopped working in 2020. Dr. Cho opined that my impairment medically equals listing 12.04. It has lasted for twelve months and significantly limits concentrating.");
+  expect(!(equals.listing.meets || (equals.sequential.outcome === "disabled" && equals.sequential.decidedAtStep === 3)), equals.sequential.headline, failures, "no-equivalence");
+  expect(equals.sequential.steps.some((item) => item.explanation.includes("404.1526")), "Equivalence was not handed back to 20 CFR 404.1526.", failures, "equivalence-citation");
 
   return { passed: failures.length === 0, failures };
 }

@@ -57,4 +57,12 @@ A model should use it in this order:
 
 `flag_invented_facts` checks a rewrite without grading it. `list_authorities` shows what the corpus contains. Prompts `review-filing`, `strengthen-filing`, and `explain-rule` encode that sequence.
 
-Do not tell a client they will be approved.
+Do not tell a client they will be approved, awarded, or denied by SSA. Say what this bench found and cite the authority.
+
+## Outside projects that were reviewed
+
+GitHub was searched for an evaluation engine that could be used inside this bench.
+
+- `SSAgov` publishes operational tools (ERE, Health IT, accessibility). None of them is a sequential-evaluation engine, so none was imported.
+- `SanjayS45/Claimd` is an application copilot with no license. Its code was not copied.
+- `leipold-us/ssa-disability-ea-skills` is MIT-licensed architect notes. It was used as a checklist only. The rules below were checked against the regulations already in this corpus, and that repository's simplified exertional definitions were not adopted: a chiropractor is not an acceptable medical source (20 CFR 404.1502(a)); a statement that an impairment equals a listing is not medical equivalence (20 CFR 404.1526); work of fewer than thirty days is not past relevant work; a combination of mild impairments is not denied as non-severe until the combined effect is addressed (20 CFR 404.1523); a child whose filing describes no work is not stopped at step 1 for silence.

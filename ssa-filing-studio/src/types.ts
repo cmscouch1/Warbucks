@@ -120,8 +120,10 @@ export interface Facts {
   objectiveTied: boolean;
   diagnosisCount: number;
   combinationAddressed: boolean;
+  mildCombinationOpen: boolean;
   severe: "yes" | "no" | "unknown";
   listingIds: string[];
+  equivalenceAlleged: boolean;
   opinions: SourceOpinion[];
   medicalConflict: string | null;
   nonmedicalConflict: string | null;
