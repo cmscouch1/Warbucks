@@ -68,9 +68,8 @@ describe("determination-date controls", () => {
 
 describe("full-record provenance boundaries", () => {
   it("does not leak a medical source attribution into a later lay-witness document", () => {
-    const { facts } = readFacts({
-      narrative: [
-        "DOCUMENT 1",
+    const narrative = [
+      "DOCUMENT 1",
         "Source: Paula Hays | Role: APN-C",
         "SOURCE PAGE 7 | Original label: 7",
         "OCR confidence: high",
@@ -78,10 +77,10 @@ describe("full-record provenance boundaries", () => {
         "DOCUMENT 2",
         "Source: Elaine Summers | Role: mother",
         "SOURCE PAGE 3 | Original label: 3",
-        "OCR confidence: medium",
-        "She observed that I avoid stores because I panic.",
-      ].join("\n"),
-    });
+      "OCR confidence: medium",
+      "She observed that I avoid stores because I panic.",
+    ].join("\n");
+    const { facts } = readFacts({ narrative });
     const opinion = facts.sentences.find((sentence) => sentence.text.startsWith("She opined"));
     const witness = facts.sentences.find((sentence) => sentence.text.startsWith("She observed"));
     expect(opinion?.category).toBe("medical-opinion");
@@ -89,6 +88,7 @@ describe("full-record provenance boundaries", () => {
     expect(witness?.category).toBe("nonmedical");
     expect(witness?.sourceName).toBeNull();
     expect(opinion?.provenance).toEqual({ documentId: "1", pageNumber: 7, sourcePageLabel: "7", ocrConfidence: "high", sourceName: "Paula Hays", sourceRole: "APN-C" });
+    expect(narrative.slice(opinion!.intakeTextStart, opinion!.intakeTextEnd)).toBe(opinion!.text);
     expect(witness?.provenance).toEqual({ documentId: "2", pageNumber: 3, sourcePageLabel: "3", ocrConfidence: "medium", sourceName: "Elaine Summers", sourceRole: "mother" });
     expect(facts.sentences.filter((sentence) => sentence.citation === "record-metadata").length).toBeGreaterThan(0);
   });
