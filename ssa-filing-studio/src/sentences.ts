@@ -1,6 +1,8 @@
 export interface SentencePiece {
   text: string;
   separator: string;
+  startOffset: number;
+  endOffset: number;
 }
 
 const ABBREVIATIONS = new Set([
@@ -33,19 +35,19 @@ export function splitSentences(input: string): SentencePiece[] {
       const text = input.slice(start, i);
       let end = i;
       while (end < input.length && input[end] === "\n") end++;
-      pieces.push({ text, separator: input.slice(i, end) });
+      pieces.push({ text, separator: input.slice(i, end), startOffset: start, endOffset: i });
       start = end;
       i = end - 1;
       continue;
     }
     let end = i + 1;
     while (end < input.length && (input[end] === " " || input[end] === "\t")) end++;
-    pieces.push({ text: input.slice(start, i + 1), separator: input.slice(i + 1, end) });
+    pieces.push({ text: input.slice(start, i + 1), separator: input.slice(i + 1, end), startOffset: start, endOffset: i + 1 });
     start = end;
     i = end - 1;
   }
   if (start < input.length || pieces.length === 0) {
-    pieces.push({ text: input.slice(start), separator: "" });
+    pieces.push({ text: input.slice(start), separator: "", startOffset: start, endOffset: input.length });
   }
   return pieces;
 }
