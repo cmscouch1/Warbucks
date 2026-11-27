@@ -1,0 +1,14 @@
+{
+ "asOf": "2026-11-19",
+ "built": "2026-11-26",
+ "sections": 58,
+ "listings": 266,
+ "gridRules": 82,
+ "sha256": {
+  "sections.json": "868e3721dad6e0e6bdbd2d572f1a8ff6e49e6f92896f98fbec82a61b8f2c28a3",
+  "grids.json": "cd38fdb003ae00e8f28f93d1c94f2989fe5523ba11e70c736e1db9ae6180711e",
+  "listings.json": "8e78e4638da90769e25e2cccbd757f32b570785b01f9a4584b01d9a1fc0e5e79",
+  "poms.json": "9c5a7f6b0b22e99b073c4f6e8cb3b41b1f2a3a8e71a66df0d9d5d8f5b43954e4",
+  "sga.json": "b70b4b3656de2807e6efec77280779a3851713bccd75efec33a1492eb2fd056a"
+ }
+}

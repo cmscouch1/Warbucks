@@ -1,0 +1,24 @@
+{
+  "name": "ssa-filing-bench",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic SSA disability-filing bench. Grades a submission from the sequential evaluation and the evidence rules, and exposes that bench as an MCP server.",
+  "scripts": {
+    "corpus": "python3 scripts/build-corpus.py",
+    "test": "vitest run",
+    "mcp": "tsx src/mcp.ts",
+    "start": "tsx src/server.ts",
+    "self-test": "tsx src/selftest-cli.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.11",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.2"
+  }
+}
