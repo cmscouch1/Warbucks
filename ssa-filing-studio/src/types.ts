@@ -103,10 +103,11 @@ export type SymptomKey =
 
 export interface Facts {
   sentences: WeighedSentence[];
-  program: Program;
+  program: Program | null;
   filingDate: string | null;
   referenceDate: string;
-  opinionRule: OpinionRule;
+  referenceDateKnown: boolean;
+  opinionRule: OpinionRule | null;
   age: number | null;
   birthDate: string | null;
   education: Education | null;
