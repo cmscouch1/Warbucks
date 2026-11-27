@@ -321,7 +321,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   });
 
   const filingDate = isoDate(input.filingDate);
-  const referenceDate = filingDate ?? new Date().toISOString().slice(0, 10);
+  const referenceDate = isoDate(input.determinationDate) ?? filingDate ?? new Date().toISOString().slice(0, 10);
   const overrides: string[] = [];
   const opinionRule = filingDate !== null && filingDate < "2017-03-27" ? "404.1527" : "404.1520c";
 
