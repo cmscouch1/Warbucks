@@ -42,6 +42,7 @@ describe("unknown case-frame dates", () => {
     const { facts } = readFacts({
       narrative: "I was born on January 1, 1980. I stopped working in 2020. I worked as a cashier from 2015 to 2020.",
     });
+    expect(facts.program).toBeNull();
     expect(facts.referenceDateKnown).toBe(false);
     expect(facts.referenceDate).toBe("");
     expect(facts.age).toBeNull();
