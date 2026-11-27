@@ -92,7 +92,7 @@ function classify(text: string, carriedSource: string | null): {
   tags: string[];
 } {
   const tags: string[] = [];
-  if (/^(?:DOCUMENT\s+|Title:|Type:|Source:|Document date:|Period:|Pages:|SSA exhibit:|Submission status:|Duplicate of:|SOURCE PAGE|OCR confidence:|FULL SOURCE TEXT|CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text.trim())) {
+  if (/^(?:DOCUMENT\s+|Title:|Type:|Source:|Document date:|Period:|Pages:|Page numbers supplied:|Expected page numbers:|SSA exhibit:|Submission status:|Duplicate of:|SOURCE PAGE|OCR confidence:|FULL SOURCE TEXT|CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text.trim())) {
     return { category: "unclassified", citation: "record-metadata", why: "Document-intake metadata is preserved for provenance but is not itself claimant or medical evidence.", tags };
   }
   if (/\b(years old|year-old|grade|high school|college|ged|worked as|job|employ(?:ed|ment)?|unemployed|earn(?:ing|ings|s)?|work(?:ing|ed)?)\b/i.test(text)) tags.push("vocational-fact");
@@ -269,12 +269,35 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
   const weighed: WeighedSentence[] = [];
   let carried: string | null = null;
   let carriedNonAms = false;
+  let currentDocumentId: string | null = null;
+  let currentPageNumber: number | null = null;
+  let currentProvenanceSource: string | null = null;
+  let currentSourceRole: string | null = null;
   pieces.forEach((piece, index) => {
     const text = piece.text.trim();
     if (!text) return;
-    if (/^(?:DOCUMENT\s+|CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text)) {
+    const documentMarker = /^DOCUMENT\s+(.+)$/i.exec(text);
+    if (documentMarker) {
+      currentDocumentId = documentMarker[1]?.trim() ?? null;
+      currentPageNumber = null;
+      currentProvenanceSource = null;
+      currentSourceRole = null;
       carried = null;
       carriedNonAms = false;
+    } else if (/^(?:CLAIMANT NARRATIVE|PROCEDURAL HISTORY|WORK HISTORY|TREATMENT CHRONOLOGY|===== NEXT RECORD ITEM)/i.test(text)) {
+      currentDocumentId = null;
+      currentPageNumber = null;
+      currentProvenanceSource = null;
+      currentSourceRole = null;
+      carried = null;
+      carriedNonAms = false;
+    }
+    const pageMarker = /^SOURCE PAGE\s+(\d+)/i.exec(text);
+    if (pageMarker?.[1]) currentPageNumber = Number(pageMarker[1]);
+    const provenanceMarker = /^Source:\s*(.*?)(?:\s*\|\s*Role:\s*(.*))?$/i.exec(text);
+    if (provenanceMarker) {
+      currentProvenanceSource = provenanceMarker[1]?.trim() || null;
+      currentSourceRole = provenanceMarker[2]?.trim() || null;
     }
     const named = sourceName(text);
     if (named) {
@@ -315,6 +338,7 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
       reservedIssue: reservedWhy !== null,
       reservedWhy,
       sourceName: usedSource,
+      provenance: { documentId: currentDocumentId, pageNumber: currentPageNumber, sourceName: currentProvenanceSource, sourceRole: currentSourceRole },
       tags: classified.tags,
       legallyIncompetentFor: incompetent,
     });
