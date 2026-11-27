@@ -7,11 +7,14 @@
   "scripts": {
     "corpus": "python3 scripts/build-corpus.py",
     "test": "vitest run",
+    "test:runtime": "vitest run test/runtime.test.ts",
     "mcp": "tsx src/mcp.ts",
     "start": "tsx src/server.ts",
     "self-test": "tsx src/selftest-cli.ts"
   },
   "dependencies": {
+    "@langchain/core": "^1.5.1",
+    "@langchain/langgraph": "^1.7.5",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "zod": "^4.6.7"
   },

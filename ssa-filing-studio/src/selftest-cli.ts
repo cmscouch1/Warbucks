@@ -1,6 +1,6 @@
 import { runSelfTest } from "./selftest.js";
 
-const result = runSelfTest();
+const result = await runSelfTest();
 if (!result.passed) {
   for (const failure of result.failures) {
     process.stderr.write(`${failure.name}: ${failure.detail}\n`);

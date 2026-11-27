@@ -6,7 +6,7 @@ import { compareFilings, gradeForModel, listingForModel, quoteForModel, runBench
 import type { FilingInput } from "./types.js";
 
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "web");
-const selfTest = runBenchSelfTest();
+const selfTestReady = runBenchSelfTest();
 
 const SAMPLES = [
   {
@@ -82,6 +82,7 @@ function filingFrom(body: Record<string, unknown>): FilingInput {
 export function createApp() {
   return createServer(async (request, response) => {
     try {
+      const selfTest = await selfTestReady;
       const url = new URL(request.url ?? "/", "http://localhost");
       if (request.method === "GET" && url.pathname === "/api/self-test") {
         send(response, selfTest.passed ? 200 : 503, selfTest);
@@ -96,7 +97,7 @@ export function createApp() {
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/listing") {
-        send(response, 200, listingForModel(url.searchParams.get("id") ?? ""));
+        send(response, 200, await listingForModel(url.searchParams.get("id") ?? ""));
         return;
       }
       if (request.method === "GET" && url.pathname === "/api/sga") {
@@ -113,10 +114,10 @@ export function createApp() {
         const body = await readJson(request);
         if (url.pathname === "/api/compare") {
           if (typeof body.revisedNarrative !== "string") throw new Error("A revised narrative is required.");
-          send(response, 200, compareFilings(filingFrom(body), body.revisedNarrative));
+          send(response, 200, await compareFilings(filingFrom(body), body.revisedNarrative));
           return;
         }
-        send(response, 200, gradeForModel(filingFrom(body)));
+        send(response, 200, await gradeForModel(filingFrom(body)));
         return;
       }
       if (request.method === "GET") {
@@ -149,6 +150,8 @@ if (entry && fileURLToPath(import.meta.url) === entry) {
   const port = Number(process.env.PORT ?? 8787);
   createApp().listen(port, () => {
     process.stderr.write(`SSA Filing Bench at http://localhost:${port}\n`);
-    if (!selfTest.passed) process.stderr.write("Self-test failed. Grades are refused.\n");
+    void selfTestReady.then((result) => {
+      if (!result.passed) process.stderr.write("Self-test failed. Grades are refused.\n");
+    });
   });
 }

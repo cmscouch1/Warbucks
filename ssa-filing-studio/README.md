@@ -6,6 +6,8 @@ A deterministic bench for adult and child Social Security disability filings. It
 
 The bench will not invent a diagnosis, a test, a measurement, or a limitation. Gap lines in the draft are blanks.
 
+Every grade, including `grade_filing` on the MCP server, runs the [LangGraph reflection graph](https://github.com/langchain-ai/langgraphjs/blob/main/examples/reflection/reflection.ipynb): a generate node grades the filing, then a reflect node may only turn a semicolon run into sentences. The graph stops when the audit passes, when a change would alter words, or after three iterations. `reflection.stoppedBecause` is `clean`, `iteration-limit`, or `guardrail`. A result that is not `clean` is not a grade.
+
 ## Regulations on disk
 
 The corpus is the eCFR title 20 issue dated 2026-11-19 (20 CFR Part 404 and Part 416 disability sections, Appendix 1 listings, and Appendix 2), POMS DI 24503.025, DI 24503.030, and DI 25001.001, and the substantial-gainful-activity table documented in `corpus/sga.json`. Government works are public domain.
@@ -24,6 +26,8 @@ npm install
 npm test
 npm start
 ```
+
+`npm test` includes the runtime suite. That suite starts `src/server.ts` and the stdio MCP process and grades filings through both, the same way a browser and a model client do.
 
 Open http://localhost:8787. Paste a filing or use a sample, then choose **Weigh this filing**. The page leads with the sequential outcome, then the index, the sentence ledger, the factor quotes, the draft, and the audit.
 
@@ -48,7 +52,7 @@ A model should use it in this order:
 
 1. `how_to_use`, or read the `ssa://guide` resource.
 2. `quote_authority` or `search_authorities` before stating what a rule says.
-3. `grade_filing` on the client's words. Lead with `sequential.outcome`. If `reliable` is false, show the audit and do not present the index as a grade.
+3. `grade_filing` on the client's words. Lead with `sequential.outcome`. Read `reflection`. If `reliable` is false, or `reflection.stoppedBecause` is not `clean`, show the audit and do not present the index as a grade.
 4. `weigh_sentences` when the question is what a single sentence is legally competent to prove.
 5. `get_listing`, `get_sga_amount`, `get_grid_rule`, `list_grid_rules`, and `apply_vocational_rule` for a specific authority or a hypothetical whose findings are already established.
 6. `draft_strongest_filing` for the reorganized filing and the blanks.

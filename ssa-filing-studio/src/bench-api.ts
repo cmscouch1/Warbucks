@@ -1,6 +1,6 @@
 import { BENCH_NOTICE, corpus, findListing, gridRule, gridRules, quoteAuthority, sgaAmount, sgaRuleText } from "./corpus.js";
 import { novelNumbers } from "./draft.js";
-import { gradeFiling } from "./grade.js";
+import { gradeFiling } from "./reflection.js";
 import { applyVocational } from "./grids.js";
 import { readFacts } from "./facts.js";
 import { runSelfTest } from "./selftest.js";
@@ -14,6 +14,7 @@ What the numbers mean
 - sequential.outcome is the result the five-step adult rules (or the child rules) produce from facts the filing actually establishes: disabled, not-disabled, or not-determinable.
 - filingStrength is this bench's 0–100 index of whether the submission contains the facts those rules require. SSA does not publish a 1–100 grade. Never call filingStrength an SSA score, an approval chance, or a probability.
 - If reliable is false, the audit failed. Show the failed checks. Do not present filingStrength as a grade.
+- grade_filing runs the LangGraph reflection graph (https://github.com/langchain-ai/langgraphjs/tree/main/examples/reflection): a generate node grades the filing, and a reflect node may only repair missing sentence breaks. The graph stops when the audit passes, when reflect would have to change words, or after 3 iterations. If reflection.stoppedBecause is not "clean", do not present filingStrength as a grade.
 - A not-determinable result is incomplete evidence or a missing vocational finding. It is not a denial, except where a step's outcome is explicitly not-disabled.
 
 Hard limits
@@ -49,10 +50,10 @@ export function inventedClinicalMarkers(original: string, revised: string): stri
   return CLINICAL_MARKERS.filter((marker) => after.includes(marker) && !before.includes(marker));
 }
 
-export function gradeForModel(input: FilingInput) {
-  const report = gradeFiling(input);
+export async function gradeForModel(input: FilingInput) {
+  const report = await gradeFiling(input);
   return {
-    howToReadThis: "Lead with sequential.outcome. filingStrength is the bench index, not an SSA score. If reliable is false, report audit.checks that failed and do not present the number as a grade.",
+    howToReadThis: "Lead with sequential.outcome. filingStrength is the bench index, not an SSA score. reflection is the LangGraph generate/reflect trace. If reliable is false or reflection.stoppedBecause is not clean, report the failed audit checks and do not present the number as a grade.",
     ...report,
   };
 }
@@ -87,10 +88,10 @@ export function quoteForModel(citation: string) {
   };
 }
 
-export function listingForModel(id: string, narrative?: string) {
+export async function listingForModel(id: string, narrative?: string) {
   const record = findListing(id);
   if (!record) return { found: false, id, message: "That listing id is not in the loaded Appendix 1." };
-  const graded = narrative ? gradeFiling({ narrative }) : null;
+  const graded = narrative ? await gradeFiling({ narrative }) : null;
   return {
     found: true,
     id: record.id,
@@ -147,10 +148,10 @@ export function listGridRulesForModel(exertional?: "sedentary" | "light" | "medi
   return { count: rules.length, rules };
 }
 
-export function compareFilings(original: FilingInput, revisedNarrative: string) {
+export async function compareFilings(original: FilingInput, revisedNarrative: string) {
   const revisedInput: FilingInput = { ...original, narrative: revisedNarrative };
-  const before = gradeFiling(original);
-  const after = gradeFiling(revisedInput);
+  const before = await gradeFiling(original);
+  const after = await gradeFiling(revisedInput);
   const numbers = novelNumbers(original.narrative, revisedNarrative);
   const markers = inventedClinicalMarkers(original.narrative, revisedNarrative);
   const clean = numbers.length === 0 && markers.length === 0;
@@ -166,8 +167,8 @@ export function compareFilings(original: FilingInput, revisedNarrative: string) 
   };
 }
 
-export function draftForModel(input: FilingInput) {
-  const report = gradeFiling(input);
+export async function draftForModel(input: FilingInput) {
+  const report = await gradeFiling(input);
   return {
     notice: "GAP lines are blanks, not facts. After a person fills a blank, call compare_filings. Do not copy a GAP sentence into the filing.",
     reliable: report.reliable,
