@@ -341,6 +341,8 @@ export function readFacts(input: FilingInput): { facts: Facts; piecesJoin: strin
     }
     weighed.push({
       index,
+      intakeTextStart: piece.startOffset,
+      intakeTextEnd: piece.endOffset,
       text,
       category: classified.category,
       citation: classified.citation,
