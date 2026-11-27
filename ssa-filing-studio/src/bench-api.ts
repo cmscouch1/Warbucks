@@ -32,11 +32,11 @@ Hard limits
 Required sequence
 1. Call how_to_use or read ssa://guide before the first filing in a conversation.
 2. Before you state what a regulation, listing, POMS section, or grid rule says, call quote_authority or search_authorities and quote the returned text. If the authority is not in the corpus, say so. Do not paraphrase from memory and present it as the regulation.
-3. Call grade_filing on the client's words. Read sequential first, then the sentence ledger, then the factors, then the draft.
+3. If any source documents exist, call grade_complete_record with every relevant document in full text and its provenance (document type, author/source role, date/period, page count, exhibit reference, and submission status), plus complete procedural, work, and treatment chronologies. Do not replace source text with summaries or omit apparently duplicative records. Use grade_filing only when the input is genuinely narrative-only. Read sequential first, then the sentence ledger, then the factors, then the draft. The deterministic grade is only one layer of review; the agent must separately reconcile source conflicts, chronology, completeness, and unsupported legal issues.
 4. The draft's GAP lines are instructions with blanks. They are not filing text. Do not paste a GAP into a filing as if the fact were known.
 5. If you or the user rewrite the filing, call compare_filings. If novelNumbers or inventedClinicalMarkers is not empty, the rewrite added facts. Stop and remove them.
 6. Use apply_vocational_rule only for a hypothetical whose age, education, experience, and exertional range are already established. Do not use it to paper over a grade_filing result that says the residual functional capacity is not established.
-7. Call self_test if a result looks inconsistent. If self_test fails, stop using the bench and report the failures.
+7. Call self_test if a result looks inconsistent. If self_test fails, stop using the bench and report the failures.\n8. The current deterministic engine does not adjudicate Title II insured status/date last insured, protective-filing versus actual submission/receipt, prior-decision preclusion/reopening/effect, or concurrent Title II/Title XVI eligibility. Preserve those facts in the full-record intake and perform a separate cited legal analysis; never imply the deterministic grade resolved them.
 
 Corpus date
 Regulations were taken from the eCFR title 20 issue dated 2026-11-19. Substantial-gainful-activity amounts for years outside the loaded table are not guessed from a nearby year.`;
