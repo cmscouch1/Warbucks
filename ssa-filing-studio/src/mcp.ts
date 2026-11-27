@@ -187,7 +187,7 @@ export function createMcpServer(): McpServer {
         role: "user",
         content: {
           type: "text",
-          text: SSA_AUDIT_PROTOCOL + "\\n\\nCASE PROFILE:\\n" + caseProfile + "\\n\\nRECORD MANIFEST:\\n" + recordManifest + "\\n\\nKNOWN ISSUES:\\n" + (knownIssues ?? "None supplied; independently identify issues."),
+          text: SSA_AUDIT_PROTOCOL + "\n\nCASE PROFILE:\n" + caseProfile + "\n\nRECORD MANIFEST:\n" + recordManifest + "\n\nKNOWN ISSUES:\n" + (knownIssues ?? "None supplied; independently identify issues."),
         },
       }],
     }),
@@ -355,6 +355,64 @@ export function createMcpServer(): McpServer {
     inputSchema: { citation: z.string().min(2).describe("Section, POMS id, listing id, or grid rule id.") },
     annotations: readOnly,
   }, async ({ citation }) => json(quoteForModel(citation)));
+
+  server.registerTool("validate_audit_closure", {
+    title: "Validate recursive audit closure gates",
+    description: "Check whether the agent's reported audit ledger satisfies the minimum conditions for a no-new-flags completion claim. This validates supplied attestations only; it does not independently verify the truth of the audit or legal conclusions.",
+    inputSchema: {
+      domainDispositions: z.array(z.object({
+        domain: z.string().min(1),
+        status: z.enum(["applicable", "not-applicable", "unresolved"]),
+        reason: z.string().optional(),
+        applicableAuthoritiesVerified: z.boolean().optional(),
+      })).min(1),
+      flags: z.array(z.object({
+        id: z.string().min(1),
+        status: z.enum(["verified-remedied", "blocked", "unresolved", "open"]),
+        verificationEvidence: z.string().optional(),
+        blockReason: z.string().optional(),
+      })),
+      consecutiveFullPassesWithoutNewFlags: z.number().int().min(0),
+      allSourcePagesAndSubmissionStatusesReconciled: z.boolean(),
+      allMaterialConflictsResolvedOrExplicitlyPreserved: z.boolean(),
+      allRemediationsRechecked: z.boolean(),
+      testsActuallyRun: z.array(z.string()),
+      testFailures: z.array(z.string()),
+      unresolvedCorpusGaps: z.array(z.string()),
+    },
+    annotations: readOnly,
+  }, async (args) => {
+    const unresolvedDomains = args.domainDispositions.filter((d) =>
+      d.status === "unresolved" ||
+      (d.status === "not-applicable" && !d.reason) ||
+      (d.status === "applicable" && d.applicableAuthoritiesVerified !== true),
+    );
+    const unclosedFlags = args.flags.filter((f) =>
+      f.status === "unresolved" || f.status === "open" ||
+      (f.status === "verified-remedied" && !f.verificationEvidence) ||
+      (f.status === "blocked" && !f.blockReason),
+    );
+    const blockers = [
+      ...(unresolvedDomains.length ? ["One or more legal domains remain unresolved or lack verified primary authority."] : []),
+      ...(unclosedFlags.length ? ["One or more flags lack verified closure or a documented blocking reason."] : []),
+      ...(args.consecutiveFullPassesWithoutNewFlags < 2 ? ["Fewer than two consecutive complete passes without new actionable flags."] : []),
+      ...(!args.allSourcePagesAndSubmissionStatusesReconciled ? ["Source/page completeness or submission/receipt status is unreconciled."] : []),
+      ...(!args.allMaterialConflictsResolvedOrExplicitlyPreserved ? ["Material evidentiary conflicts remain unaddressed."] : []),
+      ...(!args.allRemediationsRechecked ? ["One or more remediations have not been re-audited."] : []),
+      ...(args.testFailures.length ? ["Tests report failures."] : []),
+      ...(args.unresolvedCorpusGaps.length ? ["The legal corpus has unresolved authority gaps."] : []),
+    ];
+    return json({
+      eligibleForNoNewFlagsStatus: blockers.length === 0,
+      status: blockers.length === 0 ? "CONDITIONALLY VERIFIED — based on supplied audit attestations only" : "INCOMPLETE — DO NOT CLAIM AUDIT CLOSURE",
+      blockers,
+      unresolvedDomainIds: unresolvedDomains.map((d) => d.domain),
+      unclosedFlagIds: unclosedFlags.map((f) => f.id),
+      testsActuallyRun: args.testsActuallyRun,
+      testFailures: args.testFailures,
+      limitation: "This gate checks completeness of supplied audit attestations. It cannot independently establish that source documents, legal research, or agent conclusions are correct. A reviewer must verify the underlying artifacts.",
+    });
+  });
 
   server.registerTool("get_legal_framework", {
     title: "Get the SSA legal coverage framework",
