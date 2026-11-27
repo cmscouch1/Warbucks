@@ -30,6 +30,8 @@ export interface FilingInput {
   narrative: string;
   program?: Program;
   filingDate?: string;
+  /** Date of determination/hearing used for attained age and the five-year past-work window. */
+  determinationDate?: string;
   age?: number;
   birthDate?: string;
   education?: Education;
