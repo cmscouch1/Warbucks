@@ -56,9 +56,11 @@ describe("full-record provenance boundaries", () => {
       narrative: [
         "DOCUMENT 1",
         "Source: Paula Hays | Role: APN-C",
+        "SOURCE PAGE 7 | Original label: 7",
         "She opined that I cannot concentrate for more than 10 minutes.",
         "DOCUMENT 2",
         "Source: Elaine Summers | Role: mother",
+        "SOURCE PAGE 3 | Original label: 3",
         "She observed that I avoid stores because I panic.",
       ].join("\n"),
     });
@@ -68,6 +70,8 @@ describe("full-record provenance boundaries", () => {
     expect(opinion?.sourceName).toContain("Paula Hays");
     expect(witness?.category).toBe("nonmedical");
     expect(witness?.sourceName).toBeNull();
+    expect(opinion?.provenance).toEqual({ documentId: "1", pageNumber: 7, sourceName: "Paula Hays", sourceRole: "APN-C" });
+    expect(witness?.provenance).toEqual({ documentId: "2", pageNumber: 3, sourceName: "Elaine Summers", sourceRole: "mother" });
     expect(facts.sentences.filter((sentence) => sentence.citation === "record-metadata").length).toBeGreaterThan(0);
   });
 });
