@@ -257,8 +257,8 @@ export function createMcpServer(): McpServer {
         exhibitReference: z.string().optional().describe("SSA exhibit/page reference, if assigned."),
         submissionStatus: z.enum(["submitted", "uploaded", "served", "in-record", "not-submitted", "unknown"]).optional(),
         duplicateOf: z.string().optional().describe("Another documentId if this is a duplicate; retain it rather than silently dropping it."),
-        fullText: z.string().min(1).describe("Complete extracted/OCR text. Include every page, headings, tables, signatures, and relevant footnotes. Do not replace with an AI summary."),
-      })).min(1).describe("All relevant source documents, not merely selected excerpts."),
+        fullText: z.string().optional().describe("Fallback complete extracted/OCR text when page-level pages are not supplied. Do not replace with an AI summary."),
+      }).refine((doc) => Boolean(doc.fullText) || Boolean(doc.pages?.length), { message: "Provide complete fullText or at least one page-level page." })).min(1).describe("All relevant source documents, not merely selected excerpts."),
       proceduralHistory: z.string().optional().describe("Complete procedural chronology, including applications, protective filing dates, determinations, hearings, decisions, appeals, notices, and receipt status."),
       workHistory: z.string().optional().describe("Complete work chronology with employers, duties, dates, hours, earnings, accommodations, subsidies, unsuccessful work attempts, and job demands when known."),
       treatmentChronology: z.string().optional().describe("Longitudinal treatment chronology, including providers, encounters, diagnoses, findings, medication changes, response, adverse effects, gaps, referrals, and attempted contacts."),
@@ -307,7 +307,7 @@ export function createMcpServer(): McpServer {
               "OCR confidence: " + (page.ocrConfidence ?? "not supplied"),
               page.text,
             ].join("\\n")).join("\\n\\n")
-          : doc.fullText;
+          : (doc.fullText ?? "");
         sections.push(metadata + "\\nFULL SOURCE TEXT (do not treat metadata as evidence):\\n" + pageText);
       }
       const narrative = sections.join("\\n\\n===== NEXT RECORD ITEM =====\\n\\n");
@@ -349,7 +349,7 @@ export function createMcpServer(): McpServer {
                     lowQualityPages: pages.filter((page) => page.ocrConfidence === "low" || page.ocrConfidence === "unreadable").map((page) => page.pageNumber),
                   }
                 : { pageSegmented: false, limitation: "Full text supplied without page-level segmentation; exact page citations cannot be verified from this intake alone." },
-              characterCount: pages?.length ? pages.reduce((total, page) => total + page.text.length, 0) : fullText.length,
+              characterCount: pages?.length ? pages.reduce((total, page) => total + page.text.length, 0) : (fullText?.length ?? 0),
             };
           }),
           suppliedSections: {
