@@ -342,6 +342,9 @@ export function createMcpServer(): McpServer {
       const priorDecisionDocument = args.documents.some((doc) => /prior.*decision|ALJ decision|administrative law judge decision|appeals council/i.test(doc.documentType + " " + doc.title));
       if (args.priorDecisionDate || priorDecisionDocument) unsupported.push("Prior decision supplied or identified but not analyzed for administrative res judicata, reopening, prior findings, changed circumstances, or the effect of the prior adjudicated period by the current engine.");
       if (!args.program) unsupported.push("Program/title not specified; do not assume Title II, Title XVI, or concurrent eligibility.");
+      unsupported.push("Mental-function extraction in the deterministic engine is a limited keyword-presence proxy; it does not independently rate the four paragraph B domains, assess frequency/severity/duration, or construct a function-by-function mental RFC. The agent must perform and cite that analysis from the full record.");
+      unsupported.push("The deterministic RFC model is not a complete function-by-function physical or mental RFC assessment and does not fully model attendance, off-task time, pace, breaks, handling/fingering/reaching, environmental limits, or all sustained-work demands. The agent must separately assess supported restrictions and explain each inference.");
+      unsupported.push("The deterministic step-five model does not independently establish the occupational base, job incidence, VE testimony reliability, DOT/SCO conflicts, or all erosion issues. Perform a separate vocational analysis when material.");
       return json({
         recordIntake: {
           documentCount: args.documents.length,
